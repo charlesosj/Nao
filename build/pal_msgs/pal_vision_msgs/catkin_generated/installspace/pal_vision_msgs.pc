@@ -1,0 +1,8 @@
+prefix=/home/charles/catkin_ws/install
+
+Name: pal_vision_msgs
+Description: Description of pal_vision_msgs
+Version: 0.10.4
+Cflags: -I/home/charles/catkin_ws/install/include
+Libs: -L/home/charles/catkin_ws/install/lib 
+Requires: message_runtime sensor_msgs geometry_msgs actionlib_msgs

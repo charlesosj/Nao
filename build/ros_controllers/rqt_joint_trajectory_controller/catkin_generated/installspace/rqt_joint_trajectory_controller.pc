@@ -1,0 +1,8 @@
+prefix=/home/charles/catkin_ws/install
+
+Name: rqt_joint_trajectory_controller
+Description: Description of rqt_joint_trajectory_controller
+Version: 0.9.3
+Cflags: 
+Libs: -L/home/charles/catkin_ws/install/lib 
+Requires: 

@@ -1,0 +1,8 @@
+prefix=/home/charles/catkin_ws/install
+
+Name: pal_walking_msgs
+Description: Description of pal_walking_msgs
+Version: 0.10.4
+Cflags: -I/home/charles/catkin_ws/install/include
+Libs: -L/home/charles/catkin_ws/install/lib 
+Requires: geometry_msgs humanoid_nav_msgs message_runtime

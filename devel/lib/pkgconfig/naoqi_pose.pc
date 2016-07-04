@@ -1,0 +1,8 @@
+prefix=/home/charles/catkin_ws/devel
+
+Name: naoqi_pose
+Description: Description of naoqi_pose
+Version: 0.5.4
+Cflags: 
+Libs: -L/home/charles/catkin_ws/devel/lib 
+Requires: 

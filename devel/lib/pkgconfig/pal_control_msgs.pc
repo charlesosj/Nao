@@ -1,0 +1,8 @@
+prefix=/home/charles/catkin_ws/devel
+
+Name: pal_control_msgs
+Description: Description of pal_control_msgs
+Version: 0.10.4
+Cflags: -I/home/charles/catkin_ws/devel/include
+Libs: -L/home/charles/catkin_ws/devel/lib 
+Requires: message_runtime std_msgs actionlib_msgs

@@ -1,0 +1,8 @@
+prefix=/home/charles/catkin_ws/devel
+
+Name: nao_teleop
+Description: Description of nao_teleop
+Version: 0.3.1
+Cflags: -I/home/charles/catkin_ws/src/nao_extras/nao_teleop/include
+Libs: -L/home/charles/catkin_ws/devel/lib -lnao_teleop
+Requires: naoqi_bridge_msgs roscpp std_msgs sensor_msgs actionlib

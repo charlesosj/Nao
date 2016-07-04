@@ -1,0 +1,8 @@
+prefix=/home/charles/catkin_ws/devel
+
+Name: pal_gazebo_plugins
+Description: Description of pal_gazebo_plugins
+Version: 1.0.0
+Cflags: -I/home/charles/catkin_ws/src/pal_gazebo_plugins/include
+Libs: -L/home/charles/catkin_ws/devel/lib -lgazebo_ros_range -lgazebo_ros_forcetorque -lgazebo_pal_hand -lgazebo_wifi_ap
+Requires: std_msgs std_srvs tf pal_multirobot_msgs roscpp control_toolbox

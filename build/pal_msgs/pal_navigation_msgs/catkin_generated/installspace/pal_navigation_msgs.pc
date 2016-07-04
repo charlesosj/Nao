@@ -1,0 +1,8 @@
+prefix=/home/charles/catkin_ws/install
+
+Name: pal_navigation_msgs
+Description: Description of pal_navigation_msgs
+Version: 0.10.4
+Cflags: -I/home/charles/catkin_ws/install/include
+Libs: -L/home/charles/catkin_ws/install/lib 
+Requires: message_runtime nav_msgs actionlib_msgs sensor_msgs

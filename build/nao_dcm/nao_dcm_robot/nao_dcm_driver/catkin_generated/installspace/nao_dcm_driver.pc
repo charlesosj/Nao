@@ -1,0 +1,8 @@
+prefix=/home/charles/catkin_ws/install
+
+Name: nao_dcm_driver
+Description: Description of nao_dcm_driver
+Version: 0.0.1
+Cflags: 
+Libs: -L/home/charles/catkin_ws/install/lib 
+Requires: roscpp geometry_msgs tf std_msgs nao_dcm_msgs sensor_msgs hardware_interface controller_manager

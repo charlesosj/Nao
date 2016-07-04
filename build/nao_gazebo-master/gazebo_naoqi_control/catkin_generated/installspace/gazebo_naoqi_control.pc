@@ -1,0 +1,8 @@
+prefix=/home/charles/catkin_ws/install
+
+Name: gazebo_naoqi_control
+Description: Description of gazebo_naoqi_control
+Version: 0.0.1
+Cflags: 
+Libs: -L/home/charles/catkin_ws/install/lib 
+Requires: roscpp gazebo_ros control_toolbox

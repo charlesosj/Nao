@@ -1,0 +1,8 @@
+prefix=/home/charles/catkin_ws/devel
+
+Name: control_msgs
+Description: Description of control_msgs
+Version: 1.3.1
+Cflags: -I/home/charles/catkin_ws/devel/include
+Libs: -L/home/charles/catkin_ws/devel/lib 
+Requires: actionlib_msgs geometry_msgs message_runtime std_msgs trajectory_msgs
