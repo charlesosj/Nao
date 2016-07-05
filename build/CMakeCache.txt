@@ -655,6 +655,12 @@ nao_apps_BINARY_DIR:STATIC=/home/charles/catkin_ws/build/nao_robot/nao_apps
 nao_apps_SOURCE_DIR:STATIC=/home/charles/catkin_ws/src/nao_robot/nao_apps
 
 //Value Computed by CMake
+nao_audio_BINARY_DIR:STATIC=/home/charles/catkin_ws/build/naoqi_interaction/nao_audio
+
+//Value Computed by CMake
+nao_audio_SOURCE_DIR:STATIC=/home/charles/catkin_ws/src/naoqi_interaction/nao_audio
+
+//Value Computed by CMake
 nao_bringup_BINARY_DIR:STATIC=/home/charles/catkin_ws/build/nao_robot/nao_bringup
 
 //Value Computed by CMake
@@ -718,6 +724,24 @@ nao_gazebo_plugin_BINARY_DIR:STATIC=/home/charles/catkin_ws/build/nao_virtual/na
 nao_gazebo_plugin_SOURCE_DIR:STATIC=/home/charles/catkin_ws/src/nao_virtual/nao_gazebo_plugin
 
 //Value Computed by CMake
+nao_interaction_BINARY_DIR:STATIC=/home/charles/catkin_ws/build/naoqi_interaction/nao_interaction
+
+//Value Computed by CMake
+nao_interaction_SOURCE_DIR:STATIC=/home/charles/catkin_ws/src/naoqi_interaction/nao_interaction
+
+//Value Computed by CMake
+nao_interaction_launchers_BINARY_DIR:STATIC=/home/charles/catkin_ws/build/naoqi_interaction/nao_interaction_launchers
+
+//Value Computed by CMake
+nao_interaction_launchers_SOURCE_DIR:STATIC=/home/charles/catkin_ws/src/naoqi_interaction/nao_interaction_launchers
+
+//Value Computed by CMake
+nao_interaction_msgs_BINARY_DIR:STATIC=/home/charles/catkin_ws/build/naoqi_interaction/nao_interaction_msgs
+
+//Value Computed by CMake
+nao_interaction_msgs_SOURCE_DIR:STATIC=/home/charles/catkin_ws/src/naoqi_interaction/nao_interaction_msgs
+
+//Value Computed by CMake
 nao_meshes_BINARY_DIR:STATIC=/home/charles/catkin_ws/build/nao_meshes-master
 
 //Value Computed by CMake
@@ -749,6 +773,12 @@ nao_teleop_LIB_DEPENDS:STATIC=general;/opt/ros/indigo/lib/libactionlib.so;genera
 
 //Value Computed by CMake
 nao_teleop_SOURCE_DIR:STATIC=/home/charles/catkin_ws/src/nao_extras/nao_teleop
+
+//Value Computed by CMake
+nao_vision_BINARY_DIR:STATIC=/home/charles/catkin_ws/build/naoqi_interaction/nao_vision
+
+//Value Computed by CMake
+nao_vision_SOURCE_DIR:STATIC=/home/charles/catkin_ws/src/naoqi_interaction/nao_vision
 
 //Value Computed by CMake
 naoqi_apps_BINARY_DIR:STATIC=/home/charles/catkin_ws/build/naoqi_bridge/naoqi_apps
@@ -1208,7 +1238,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_LOCAL_GENERATORS:INTERNAL=69
+CMAKE_NUMBER_OF_LOCAL_GENERATORS:INTERNAL=74
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP

@@ -4752,6 +4752,214 @@ trajectory_msgs_generate_messages_py/fast:
 .PHONY : trajectory_msgs_generate_messages_py/fast
 
 #=============================================================================
+# Target rules for targets named _nao_interaction_msgs_generate_messages_check_deps_AudioMasterVolume
+
+# Build rule for target.
+_nao_interaction_msgs_generate_messages_check_deps_AudioMasterVolume: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 _nao_interaction_msgs_generate_messages_check_deps_AudioMasterVolume
+.PHONY : _nao_interaction_msgs_generate_messages_check_deps_AudioMasterVolume
+
+# fast build rule for target.
+_nao_interaction_msgs_generate_messages_check_deps_AudioMasterVolume/fast:
+	$(MAKE) -f naoqi_interaction/nao_interaction_msgs/CMakeFiles/_nao_interaction_msgs_generate_messages_check_deps_AudioMasterVolume.dir/build.make naoqi_interaction/nao_interaction_msgs/CMakeFiles/_nao_interaction_msgs_generate_messages_check_deps_AudioMasterVolume.dir/build
+.PHONY : _nao_interaction_msgs_generate_messages_check_deps_AudioMasterVolume/fast
+
+#=============================================================================
+# Target rules for targets named _nao_interaction_msgs_generate_messages_check_deps_AudioPlayback
+
+# Build rule for target.
+_nao_interaction_msgs_generate_messages_check_deps_AudioPlayback: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 _nao_interaction_msgs_generate_messages_check_deps_AudioPlayback
+.PHONY : _nao_interaction_msgs_generate_messages_check_deps_AudioPlayback
+
+# fast build rule for target.
+_nao_interaction_msgs_generate_messages_check_deps_AudioPlayback/fast:
+	$(MAKE) -f naoqi_interaction/nao_interaction_msgs/CMakeFiles/_nao_interaction_msgs_generate_messages_check_deps_AudioPlayback.dir/build.make naoqi_interaction/nao_interaction_msgs/CMakeFiles/_nao_interaction_msgs_generate_messages_check_deps_AudioPlayback.dir/build
+.PHONY : _nao_interaction_msgs_generate_messages_check_deps_AudioPlayback/fast
+
+#=============================================================================
+# Target rules for targets named _nao_interaction_msgs_generate_messages_check_deps_AudioRecorder
+
+# Build rule for target.
+_nao_interaction_msgs_generate_messages_check_deps_AudioRecorder: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 _nao_interaction_msgs_generate_messages_check_deps_AudioRecorder
+.PHONY : _nao_interaction_msgs_generate_messages_check_deps_AudioRecorder
+
+# fast build rule for target.
+_nao_interaction_msgs_generate_messages_check_deps_AudioRecorder/fast:
+	$(MAKE) -f naoqi_interaction/nao_interaction_msgs/CMakeFiles/_nao_interaction_msgs_generate_messages_check_deps_AudioRecorder.dir/build.make naoqi_interaction/nao_interaction_msgs/CMakeFiles/_nao_interaction_msgs_generate_messages_check_deps_AudioRecorder.dir/build
+.PHONY : _nao_interaction_msgs_generate_messages_check_deps_AudioRecorder/fast
+
+#=============================================================================
+# Target rules for targets named _nao_interaction_msgs_generate_messages_check_deps_AudioSourceLocalization
+
+# Build rule for target.
+_nao_interaction_msgs_generate_messages_check_deps_AudioSourceLocalization: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 _nao_interaction_msgs_generate_messages_check_deps_AudioSourceLocalization
+.PHONY : _nao_interaction_msgs_generate_messages_check_deps_AudioSourceLocalization
+
+# fast build rule for target.
+_nao_interaction_msgs_generate_messages_check_deps_AudioSourceLocalization/fast:
+	$(MAKE) -f naoqi_interaction/nao_interaction_msgs/CMakeFiles/_nao_interaction_msgs_generate_messages_check_deps_AudioSourceLocalization.dir/build.make naoqi_interaction/nao_interaction_msgs/CMakeFiles/_nao_interaction_msgs_generate_messages_check_deps_AudioSourceLocalization.dir/build
+.PHONY : _nao_interaction_msgs_generate_messages_check_deps_AudioSourceLocalization/fast
+
+#=============================================================================
+# Target rules for targets named _nao_interaction_msgs_generate_messages_check_deps_FaceDetected
+
+# Build rule for target.
+_nao_interaction_msgs_generate_messages_check_deps_FaceDetected: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 _nao_interaction_msgs_generate_messages_check_deps_FaceDetected
+.PHONY : _nao_interaction_msgs_generate_messages_check_deps_FaceDetected
+
+# fast build rule for target.
+_nao_interaction_msgs_generate_messages_check_deps_FaceDetected/fast:
+	$(MAKE) -f naoqi_interaction/nao_interaction_msgs/CMakeFiles/_nao_interaction_msgs_generate_messages_check_deps_FaceDetected.dir/build.make naoqi_interaction/nao_interaction_msgs/CMakeFiles/_nao_interaction_msgs_generate_messages_check_deps_FaceDetected.dir/build
+.PHONY : _nao_interaction_msgs_generate_messages_check_deps_FaceDetected/fast
+
+#=============================================================================
+# Target rules for targets named _nao_interaction_msgs_generate_messages_check_deps_LandmarkDetected
+
+# Build rule for target.
+_nao_interaction_msgs_generate_messages_check_deps_LandmarkDetected: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 _nao_interaction_msgs_generate_messages_check_deps_LandmarkDetected
+.PHONY : _nao_interaction_msgs_generate_messages_check_deps_LandmarkDetected
+
+# fast build rule for target.
+_nao_interaction_msgs_generate_messages_check_deps_LandmarkDetected/fast:
+	$(MAKE) -f naoqi_interaction/nao_interaction_msgs/CMakeFiles/_nao_interaction_msgs_generate_messages_check_deps_LandmarkDetected.dir/build.make naoqi_interaction/nao_interaction_msgs/CMakeFiles/_nao_interaction_msgs_generate_messages_check_deps_LandmarkDetected.dir/build
+.PHONY : _nao_interaction_msgs_generate_messages_check_deps_LandmarkDetected/fast
+
+#=============================================================================
+# Target rules for targets named _nao_interaction_msgs_generate_messages_check_deps_LearnFace
+
+# Build rule for target.
+_nao_interaction_msgs_generate_messages_check_deps_LearnFace: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 _nao_interaction_msgs_generate_messages_check_deps_LearnFace
+.PHONY : _nao_interaction_msgs_generate_messages_check_deps_LearnFace
+
+# fast build rule for target.
+_nao_interaction_msgs_generate_messages_check_deps_LearnFace/fast:
+	$(MAKE) -f naoqi_interaction/nao_interaction_msgs/CMakeFiles/_nao_interaction_msgs_generate_messages_check_deps_LearnFace.dir/build.make naoqi_interaction/nao_interaction_msgs/CMakeFiles/_nao_interaction_msgs_generate_messages_check_deps_LearnFace.dir/build
+.PHONY : _nao_interaction_msgs_generate_messages_check_deps_LearnFace/fast
+
+#=============================================================================
+# Target rules for targets named _nao_interaction_msgs_generate_messages_check_deps_MovementDetected
+
+# Build rule for target.
+_nao_interaction_msgs_generate_messages_check_deps_MovementDetected: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 _nao_interaction_msgs_generate_messages_check_deps_MovementDetected
+.PHONY : _nao_interaction_msgs_generate_messages_check_deps_MovementDetected
+
+# fast build rule for target.
+_nao_interaction_msgs_generate_messages_check_deps_MovementDetected/fast:
+	$(MAKE) -f naoqi_interaction/nao_interaction_msgs/CMakeFiles/_nao_interaction_msgs_generate_messages_check_deps_MovementDetected.dir/build.make naoqi_interaction/nao_interaction_msgs/CMakeFiles/_nao_interaction_msgs_generate_messages_check_deps_MovementDetected.dir/build
+.PHONY : _nao_interaction_msgs_generate_messages_check_deps_MovementDetected/fast
+
+#=============================================================================
+# Target rules for targets named _nao_interaction_msgs_generate_messages_check_deps_VisionMotionSensitivity
+
+# Build rule for target.
+_nao_interaction_msgs_generate_messages_check_deps_VisionMotionSensitivity: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 _nao_interaction_msgs_generate_messages_check_deps_VisionMotionSensitivity
+.PHONY : _nao_interaction_msgs_generate_messages_check_deps_VisionMotionSensitivity
+
+# fast build rule for target.
+_nao_interaction_msgs_generate_messages_check_deps_VisionMotionSensitivity/fast:
+	$(MAKE) -f naoqi_interaction/nao_interaction_msgs/CMakeFiles/_nao_interaction_msgs_generate_messages_check_deps_VisionMotionSensitivity.dir/build.make naoqi_interaction/nao_interaction_msgs/CMakeFiles/_nao_interaction_msgs_generate_messages_check_deps_VisionMotionSensitivity.dir/build
+.PHONY : _nao_interaction_msgs_generate_messages_check_deps_VisionMotionSensitivity/fast
+
+#=============================================================================
+# Target rules for targets named nao_interaction_msgs_gencpp
+
+# Build rule for target.
+nao_interaction_msgs_gencpp: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 nao_interaction_msgs_gencpp
+.PHONY : nao_interaction_msgs_gencpp
+
+# fast build rule for target.
+nao_interaction_msgs_gencpp/fast:
+	$(MAKE) -f naoqi_interaction/nao_interaction_msgs/CMakeFiles/nao_interaction_msgs_gencpp.dir/build.make naoqi_interaction/nao_interaction_msgs/CMakeFiles/nao_interaction_msgs_gencpp.dir/build
+.PHONY : nao_interaction_msgs_gencpp/fast
+
+#=============================================================================
+# Target rules for targets named nao_interaction_msgs_generate_messages
+
+# Build rule for target.
+nao_interaction_msgs_generate_messages: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 nao_interaction_msgs_generate_messages
+.PHONY : nao_interaction_msgs_generate_messages
+
+# fast build rule for target.
+nao_interaction_msgs_generate_messages/fast:
+	$(MAKE) -f naoqi_interaction/nao_interaction_msgs/CMakeFiles/nao_interaction_msgs_generate_messages.dir/build.make naoqi_interaction/nao_interaction_msgs/CMakeFiles/nao_interaction_msgs_generate_messages.dir/build
+.PHONY : nao_interaction_msgs_generate_messages/fast
+
+#=============================================================================
+# Target rules for targets named nao_interaction_msgs_generate_messages_cpp
+
+# Build rule for target.
+nao_interaction_msgs_generate_messages_cpp: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 nao_interaction_msgs_generate_messages_cpp
+.PHONY : nao_interaction_msgs_generate_messages_cpp
+
+# fast build rule for target.
+nao_interaction_msgs_generate_messages_cpp/fast:
+	$(MAKE) -f naoqi_interaction/nao_interaction_msgs/CMakeFiles/nao_interaction_msgs_generate_messages_cpp.dir/build.make naoqi_interaction/nao_interaction_msgs/CMakeFiles/nao_interaction_msgs_generate_messages_cpp.dir/build
+.PHONY : nao_interaction_msgs_generate_messages_cpp/fast
+
+#=============================================================================
+# Target rules for targets named nao_interaction_msgs_generate_messages_lisp
+
+# Build rule for target.
+nao_interaction_msgs_generate_messages_lisp: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 nao_interaction_msgs_generate_messages_lisp
+.PHONY : nao_interaction_msgs_generate_messages_lisp
+
+# fast build rule for target.
+nao_interaction_msgs_generate_messages_lisp/fast:
+	$(MAKE) -f naoqi_interaction/nao_interaction_msgs/CMakeFiles/nao_interaction_msgs_generate_messages_lisp.dir/build.make naoqi_interaction/nao_interaction_msgs/CMakeFiles/nao_interaction_msgs_generate_messages_lisp.dir/build
+.PHONY : nao_interaction_msgs_generate_messages_lisp/fast
+
+#=============================================================================
+# Target rules for targets named nao_interaction_msgs_generate_messages_py
+
+# Build rule for target.
+nao_interaction_msgs_generate_messages_py: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 nao_interaction_msgs_generate_messages_py
+.PHONY : nao_interaction_msgs_generate_messages_py
+
+# fast build rule for target.
+nao_interaction_msgs_generate_messages_py/fast:
+	$(MAKE) -f naoqi_interaction/nao_interaction_msgs/CMakeFiles/nao_interaction_msgs_generate_messages_py.dir/build.make naoqi_interaction/nao_interaction_msgs/CMakeFiles/nao_interaction_msgs_generate_messages_py.dir/build
+.PHONY : nao_interaction_msgs_generate_messages_py/fast
+
+#=============================================================================
+# Target rules for targets named nao_interaction_msgs_genlisp
+
+# Build rule for target.
+nao_interaction_msgs_genlisp: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 nao_interaction_msgs_genlisp
+.PHONY : nao_interaction_msgs_genlisp
+
+# fast build rule for target.
+nao_interaction_msgs_genlisp/fast:
+	$(MAKE) -f naoqi_interaction/nao_interaction_msgs/CMakeFiles/nao_interaction_msgs_genlisp.dir/build.make naoqi_interaction/nao_interaction_msgs/CMakeFiles/nao_interaction_msgs_genlisp.dir/build
+.PHONY : nao_interaction_msgs_genlisp/fast
+
+#=============================================================================
+# Target rules for targets named nao_interaction_msgs_genpy
+
+# Build rule for target.
+nao_interaction_msgs_genpy: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 nao_interaction_msgs_genpy
+.PHONY : nao_interaction_msgs_genpy
+
+# fast build rule for target.
+nao_interaction_msgs_genpy/fast:
+	$(MAKE) -f naoqi_interaction/nao_interaction_msgs/CMakeFiles/nao_interaction_msgs_genpy.dir/build.make naoqi_interaction/nao_interaction_msgs/CMakeFiles/nao_interaction_msgs_genpy.dir/build
+.PHONY : nao_interaction_msgs_genpy/fast
+
+#=============================================================================
 # Target rules for targets named _run_tests_hardware_interface
 
 # Build rule for target.
@@ -9603,6 +9811,22 @@ help:
 	@echo "... trajectory_msgs_generate_messages_cpp"
 	@echo "... trajectory_msgs_generate_messages_lisp"
 	@echo "... trajectory_msgs_generate_messages_py"
+	@echo "... _nao_interaction_msgs_generate_messages_check_deps_AudioMasterVolume"
+	@echo "... _nao_interaction_msgs_generate_messages_check_deps_AudioPlayback"
+	@echo "... _nao_interaction_msgs_generate_messages_check_deps_AudioRecorder"
+	@echo "... _nao_interaction_msgs_generate_messages_check_deps_AudioSourceLocalization"
+	@echo "... _nao_interaction_msgs_generate_messages_check_deps_FaceDetected"
+	@echo "... _nao_interaction_msgs_generate_messages_check_deps_LandmarkDetected"
+	@echo "... _nao_interaction_msgs_generate_messages_check_deps_LearnFace"
+	@echo "... _nao_interaction_msgs_generate_messages_check_deps_MovementDetected"
+	@echo "... _nao_interaction_msgs_generate_messages_check_deps_VisionMotionSensitivity"
+	@echo "... nao_interaction_msgs_gencpp"
+	@echo "... nao_interaction_msgs_generate_messages"
+	@echo "... nao_interaction_msgs_generate_messages_cpp"
+	@echo "... nao_interaction_msgs_generate_messages_lisp"
+	@echo "... nao_interaction_msgs_generate_messages_py"
+	@echo "... nao_interaction_msgs_genlisp"
+	@echo "... nao_interaction_msgs_genpy"
 	@echo "... _run_tests_hardware_interface"
 	@echo "... _run_tests_hardware_interface_gtest"
 	@echo "... _run_tests_hardware_interface_gtest_actuator_command_interface_test"

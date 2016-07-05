@@ -17,7 +17,7 @@ import naoqi_bridge_msgs.msg
 
 import os
 import numpy
-
+from sensor_msgs.msg import JointState
 
 
 class NaoSocial:
@@ -25,6 +25,9 @@ class NaoSocial:
         # initial trackbar settings
         self.imgH = 0
         self.imgW = 0
+        self.imgp = 0.1
+        self.imgC = 0
+        self.headpos = 1
         self.a1 = 0
         self.b1 = 0
         self.c1 = 0
@@ -33,9 +36,10 @@ class NaoSocial:
         self.c2 = 100
 
         self.bridge = CvBridge()
-        self.image_sub = message_filters.Subscriber("/nao_robot/camera/top/camera/image_raw", Image)
+        self.image_sub = message_filters.Subscriber("/camera/image_raw", Image)
 
         self.ts = message_filters.ApproximateTimeSynchronizer([self.image_sub], 10, 0.5)
+        self.statesub= rospy.Subscriber("/joint_states", JointState,self.jointstateC)
         self.ts.registerCallback(self.imgCallback)
         self.pub = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
         self.t = Twist()
@@ -65,7 +69,10 @@ class NaoSocial:
         # cv2.namedWindow("depth", 1)
         cv2.namedWindow("thresh", 1)
         cv2.startWindowThread()
-        self.headpos = 1.0
+    def jointstateC(self,data):
+        #print (data.name["HeadYaw"].position())
+        self.headpos= data.position[0]
+
 
     def settingsCallback(self, data):
         self.a1 = cv2.getTrackbarPos('b1', 'settings')
@@ -96,26 +103,39 @@ class NaoSocial:
                 self.calculateMovement(center)
 
     def calculateMovement(self, center):
-        if center[0] < 140:
-            self.headpos += 0.1
-            self.pose([self.headpos])
-        if center[0] > 180:
-          #  self.headpos -= 0.1
-            self.pose([self.headpos])
+
+        #dont move if item is at center
+        if  abs(center[0] - self.imgC)   <  (self.imgC * self.imgp):
+          print("Center")
+        elif  center[0] > self.imgC:
+                self.headpos -= 0.1
+                self.pose([self.headpos])
+        elif center[0] < self.imgC:
+                self.headpos += 0.1
+                self.pose([self.headpos])
+
+
+
+
 
     def pose(self, pos):
-        print (self.headpos)
-        angle_goal = naoqi_bridge_msgs.msg.JointAnglesWithSpeedGoal()
-        angle_goal.joint_angles.relative = False
-        angle_goal.joint_angles.joint_names = ["HeadYaw", "HeadPitch"]
-        angle_goal.joint_angles.joint_angles = [pos, 0.0]
-        angle_goal.joint_angles.speed = 0.2
-        rospy.loginfo("Sending joint angles goal...")
-        self.angle_client.send_goal_and_wait(angle_goal)
-        result = self.angle_client.get_result()
-        rospy.loginfo("Angle results: %s", str(result.goal_position.position))
-        # save current head position
-        #self.headpos = result.goal_position.position[0]
+        # if  the goal head location is out of range dont move
+        if -1.1 <= self.headpos <= 1.1:
+            angle_goal = naoqi_bridge_msgs.msg.JointAnglesWithSpeedGoal()
+            angle_goal.joint_angles.relative = 0
+          #  angle_goal.joint_angles.joint_names = ["HeadYaw", "HeadPitch"]
+            angle_goal.joint_angles.joint_names = ["HeadYaw"]
+            angle_goal.joint_angles.joint_angles = [self.headpos]
+            angle_goal.joint_angles.speed = 0.2
+            rospy.loginfo("Sending joint angles goal...")
+            self.angle_client.send_goal(angle_goal)
+            result = self.angle_client.get_result()
+
+        else:
+             print("Too Far" + str(self.headpos))
+
+
+
 
     def imgCallback(self, rgb_data):
         try:
@@ -125,6 +145,7 @@ class NaoSocial:
             if self.imgH == 0:
                 self.imgH = numpy.size(cv_image, 0)
                 self.imgW = numpy.size(cv_image, 1)
+                self.imgC = self.imgW/2
 
 
 
