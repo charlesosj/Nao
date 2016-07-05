@@ -1,5 +1,4 @@
-
-#!/usr/bin/env python
+# !/usr/bin/env python
 import rospy
 import cv2
 import message_filters
@@ -10,16 +9,13 @@ import roslib
 
 # from rospy.exceptions import ROSException
 roslib.load_manifest('naoqi_driver')
-from rospy import Duration
 
 import actionlib
-from actionlib_msgs.msg import GoalStatus
 import naoqi_bridge_msgs.msg
 
 import os
 import numpy
 from sensor_msgs.msg import JointState
-import time
 
 
 class NaoSocial:
@@ -109,12 +105,11 @@ class NaoSocial:
 
         # dont move if item is at center
         if abs(center[0] - self.imgC) < self.imgThresh:
-          #  print("Center")
+            # print("Center")
             return
         elif center[0] > self.imgC:
             diff = abs(center[0] - self.imgC)
             pos = diff * 0.001
-
 
             self.headpos -= pos
             self.pose(self.headpos, )
@@ -133,11 +128,11 @@ class NaoSocial:
             angle_goal.joint_angles.relative = 0
             #  angle_goal.joint_angles.joint_names = ["HeadYaw", "HeadPitch"]
             angle_goal.joint_angles.joint_names = ["HeadYaw"]
-            angle_goal.joint_angles.joint_angles = [self.headpos]
+            angle_goal.joint_angles.joint_angles = [pos]
             angle_goal.joint_angles.speed = 0.2
-         #   rospy.loginfo("Sending joint angles goal...")
+            #   rospy.loginfo("Sending joint angles goal...")
             self.angle_client.send_goal(angle_goal)
-            result = self.angle_client.get_result()
+            # result = self.angle_client.get_result()
 
         else:
             print("Too Far" + str(self.headpos))
@@ -152,30 +147,13 @@ class NaoSocial:
                 self.imgW = numpy.size(cv_image, 1)
                 self.imgC = self.imgW / 2
                 self.imgThresh = self.imgC * self.imgp
-
-
-
-
+            cv2.imshow("Image window", cv_image)
+            self.detect(cv_image)
         except CvBridgeError, e:
             print e
 
-        cv2.imshow("Image window", cv_image)
-        self.detect(cv_image)
-
-
-
-
 rospy.init_node('NaoSocial', anonymous=True)
-
-
-def nodes():
-    os.system(
-        "roslaunch nao_bringup nao_full_py.launch nao_ip:=127.0.0.1  roscore_ip:=127.0.0.1:11311 network_interface:=wlan0")
-
-
 app = NaoSocial()
 # Application.pose(app)
-
-
 rospy.spin()
 cv2.destroyAllWindows()
