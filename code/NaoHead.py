@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 import rospy
 import cv2
@@ -18,6 +19,7 @@ import naoqi_bridge_msgs.msg
 import os
 import numpy
 from sensor_msgs.msg import JointState
+import time
 
 
 class NaoSocial:
@@ -27,6 +29,7 @@ class NaoSocial:
         self.imgW = 0
         self.imgp = 0.1
         self.imgC = 0
+        self.imgThresh = 0
         self.headpos = 1
         self.a1 = 0
         self.b1 = 0
@@ -39,7 +42,7 @@ class NaoSocial:
         self.image_sub = message_filters.Subscriber("/camera/image_raw", Image)
 
         self.ts = message_filters.ApproximateTimeSynchronizer([self.image_sub], 10, 0.5)
-        self.statesub= rospy.Subscriber("/joint_states", JointState,self.jointstateC)
+        self.statesub = rospy.Subscriber("/joint_states", JointState, self.jointstateC)
         self.ts.registerCallback(self.imgCallback)
         self.pub = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
         self.t = Twist()
@@ -69,10 +72,10 @@ class NaoSocial:
         # cv2.namedWindow("depth", 1)
         cv2.namedWindow("thresh", 1)
         cv2.startWindowThread()
-    def jointstateC(self,data):
-        #print (data.name["HeadYaw"].position())
-        self.headpos= data.position[0]
 
+    def jointstateC(self, data):
+        # print (data.name["HeadYaw"].position())
+        self.headpos = data.position[0]
 
     def settingsCallback(self, data):
         self.a1 = cv2.getTrackbarPos('b1', 'settings')
@@ -104,38 +107,40 @@ class NaoSocial:
 
     def calculateMovement(self, center):
 
-        #dont move if item is at center
-        if  abs(center[0] - self.imgC)   <  (self.imgC * self.imgp):
-          print("Center")
-        elif  center[0] > self.imgC:
-                self.headpos -= 0.1
-                self.pose([self.headpos])
+        # dont move if item is at center
+        if abs(center[0] - self.imgC) < self.imgThresh:
+          #  print("Center")
+            return
+        elif center[0] > self.imgC:
+            diff = abs(center[0] - self.imgC)
+            pos = diff * 0.001
+
+
+            self.headpos -= pos
+            self.pose(self.headpos, )
         elif center[0] < self.imgC:
-                self.headpos += 0.1
-                self.pose([self.headpos])
-
-
-
-
+            diff = abs(center[0] - self.imgC)
+            pos = diff * 0.001
+            self.headpos += pos
+            self.pose(self.headpos)
 
     def pose(self, pos):
         # if  the goal head location is out of range dont move
+
         if -1.1 <= self.headpos <= 1.1:
+
             angle_goal = naoqi_bridge_msgs.msg.JointAnglesWithSpeedGoal()
             angle_goal.joint_angles.relative = 0
-          #  angle_goal.joint_angles.joint_names = ["HeadYaw", "HeadPitch"]
+            #  angle_goal.joint_angles.joint_names = ["HeadYaw", "HeadPitch"]
             angle_goal.joint_angles.joint_names = ["HeadYaw"]
             angle_goal.joint_angles.joint_angles = [self.headpos]
             angle_goal.joint_angles.speed = 0.2
-            rospy.loginfo("Sending joint angles goal...")
+         #   rospy.loginfo("Sending joint angles goal...")
             self.angle_client.send_goal(angle_goal)
             result = self.angle_client.get_result()
 
         else:
-             print("Too Far" + str(self.headpos))
-
-
-
+            print("Too Far" + str(self.headpos))
 
     def imgCallback(self, rgb_data):
         try:
@@ -145,7 +150,8 @@ class NaoSocial:
             if self.imgH == 0:
                 self.imgH = numpy.size(cv_image, 0)
                 self.imgW = numpy.size(cv_image, 1)
-                self.imgC = self.imgW/2
+                self.imgC = self.imgW / 2
+                self.imgThresh = self.imgC * self.imgp
 
 
 
@@ -157,12 +163,14 @@ class NaoSocial:
         self.detect(cv_image)
 
 
-#
 
 
 rospy.init_node('NaoSocial', anonymous=True)
+
+
 def nodes():
-    os.system( "roslaunch nao_bringup nao_full_py.launch nao_ip:=127.0.0.1  roscore_ip:=127.0.0.1:11311 network_interface:=wlan0")
+    os.system(
+        "roslaunch nao_bringup nao_full_py.launch nao_ip:=127.0.0.1  roscore_ip:=127.0.0.1:11311 network_interface:=wlan0")
 
 
 app = NaoSocial()

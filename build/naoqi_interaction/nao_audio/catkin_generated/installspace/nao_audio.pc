@@ -1,0 +1,8 @@
+prefix=/home/charles/catkin_ws/install
+
+Name: nao_audio
+Description: Description of nao_audio
+Version: 0.1.5
+Cflags: 
+Libs: -L/home/charles/catkin_ws/install/lib 
+Requires: 
