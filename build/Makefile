@@ -8405,6 +8405,19 @@ velocity_controllers/fast:
 .PHONY : velocity_controllers/fast
 
 #=============================================================================
+# Target rules for targets named video_stream
+
+# Build rule for target.
+video_stream: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 video_stream
+.PHONY : video_stream
+
+# fast build rule for target.
+video_stream/fast:
+	$(MAKE) -f video_stream_opencv/CMakeFiles/video_stream.dir/build.make video_stream_opencv/CMakeFiles/video_stream.dir/build
+.PHONY : video_stream/fast
+
+#=============================================================================
 # Target rules for targets named _run_tests_diff_drive_controller
 
 # Build rule for target.
@@ -10092,6 +10105,7 @@ help:
 	@echo "... transmission_parser_test"
 	@echo "... effort_controllers"
 	@echo "... velocity_controllers"
+	@echo "... video_stream"
 	@echo "... _run_tests_diff_drive_controller"
 	@echo "... _run_tests_diff_drive_controller_rostest"
 	@echo "... _run_tests_diff_drive_controller_rostest_test_diff_drive_bad_urdf.test"

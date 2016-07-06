@@ -1,6 +1,7 @@
 # !/usr/bin/env python
 import rospy
 import cv2
+import sys
 import message_filters
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
@@ -33,9 +34,11 @@ class NaoSocial:
         self.a2 = 0
         self.b2 = 0
         self.c2 = 100
+        self.count = 0
 
         self.bridge = CvBridge()
-        self.image_sub = message_filters.Subscriber("/camera/image_raw", Image)
+        #self.image_sub = message_filters.Subscriber("/camera/image_raw", Image)
+        self.image_sub = message_filters.Subscriber("/videofile/image_raw", Image)
 
         self.ts = message_filters.ApproximateTimeSynchronizer([self.image_sub], 10, 0.5)
         self.statesub = rospy.Subscriber("/joint_states", JointState, self.jointstateC)
@@ -50,9 +53,9 @@ class NaoSocial:
         self.angle_client = actionlib.SimpleActionClient("joint_angles_action",
                                                          naoqi_bridge_msgs.msg.JointAnglesWithSpeedAction)
         rospy.loginfo("Waiting for joint_trajectory and joint_stiffness servers...")
-        self.client.wait_for_server()
-        self.stiffness_client.wait_for_server()
-        self.angle_client.wait_for_server()
+       # self.client.wait_for_server()
+      #  self.stiffness_client.wait_for_server()
+        #self.angle_client.wait_for_server()
         rospy.loginfo("Done.")
 
         # trackbars
@@ -65,9 +68,17 @@ class NaoSocial:
         cv2.createTrackbar('g2', 'settings', 0, 255, self.settingsCallback)
         cv2.createTrackbar('r2', 'settings', 0, 255, self.settingsCallback)
         cv2.namedWindow("Image window", 1)
+        cv2.namedWindow("D", 1)
         # cv2.namedWindow("depth", 1)
         cv2.namedWindow("thresh", 1)
         cv2.startWindowThread()
+        cascadepath = "/home/charles/catkin_ws/code/haarcascades/haarcascade_frontalface_alt.xml"
+        self.faceCascade = cv2.CascadeClassifier(cascadepath)
+
+
+    def __del__(self):
+        cv2.destroyAllWindows()
+
 
     def jointstateC(self, data):
         # print (data.name["HeadYaw"].position())
@@ -147,13 +158,36 @@ class NaoSocial:
                 self.imgW = numpy.size(cv_image, 1)
                 self.imgC = self.imgW / 2
                 self.imgThresh = self.imgC * self.imgp
-            cv2.imshow("Image window", cv_image)
-            self.detect(cv_image)
+         #   cv2.imshow("Image window", cv_image)
+            i = cv2.resize(cv_image, (320, 240))
+            self.detectface( i )
         except CvBridgeError, e:
             print e
 
+    def detectface(self,frame):
+        gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+        faceCascade = cv2.CascadeClassifier("haarcascades/haarcascade_frontalface_alt2.xml")
+        faces = faceCascade.detectMultiScale(
+            gray,
+            minNeighbors=5,
+            scaleFactor=1.1,
+            minSize=(15, 15),
+            flags=cv2.cv.CV_HAAR_SCALE_IMAGE )
+        for (x, y, w, h) in faces:
+            self.count = self.count +1
+            print(self.count)
+            cv2.rectangle(frame , (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+        cv2.imshow("Image window", frame )
+
+
+
+
+
 rospy.init_node('NaoSocial', anonymous=True)
 app = NaoSocial()
-# Application.pose(app)
+
+
+
+
 rospy.spin()
-cv2.destroyAllWindows()
