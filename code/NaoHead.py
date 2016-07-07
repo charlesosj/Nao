@@ -25,9 +25,11 @@ class NaoSocial:
         self.imgH = 0
         self.imgW = 0
         self.imgp = 0.1
-        self.imgC = 0
+        self.imgCx = 0
+        self.imgCy = 0
         self.imgThresh = 0
-        self.headpos = 1
+        self.headYaw = 1
+        self.headPitch = 0
         self.a1 = 0
         self.b1 = 0
         self.c1 = 0
@@ -53,9 +55,9 @@ class NaoSocial:
         self.angle_client = actionlib.SimpleActionClient("joint_angles_action",
                                                          naoqi_bridge_msgs.msg.JointAnglesWithSpeedAction)
         rospy.loginfo("Waiting for joint_trajectory and joint_stiffness servers...")
-       # self.client.wait_for_server()
-      #  self.stiffness_client.wait_for_server()
-        #self.angle_client.wait_for_server()
+        self.client.wait_for_server()
+        self.stiffness_client.wait_for_server()
+        self.angle_client.wait_for_server()
         rospy.loginfo("Done.")
 
         # trackbars
@@ -72,8 +74,7 @@ class NaoSocial:
         # cv2.namedWindow("depth", 1)
         cv2.namedWindow("thresh", 1)
         cv2.startWindowThread()
-        cascadepath = "/home/charles/catkin_ws/code/haarcascades/haarcascade_frontalface_alt.xml"
-        self.faceCascade = cv2.CascadeClassifier(cascadepath)
+
 
 
     def __del__(self):
@@ -82,7 +83,9 @@ class NaoSocial:
 
     def jointstateC(self, data):
         # print (data.name["HeadYaw"].position())
-        self.headpos = data.position[0]
+        self.headYaw = data.position[0]
+        self.headPitch = data.position[1]
+      #  print(data)
 
     def settingsCallback(self, data):
         self.a1 = cv2.getTrackbarPos('b1', 'settings')
@@ -113,53 +116,76 @@ class NaoSocial:
                 self.calculateMovement(center)
 
     def calculateMovement(self, center):
-
-        # dont move if item is at center
-        if abs(center[0] - self.imgC) < self.imgThresh:
-            # print("Center")
-            return
-        elif center[0] > self.imgC:
-            diff = abs(center[0] - self.imgC)
+        #
+        yaw = 99.99
+        pitch =99.99
+        #if the x of the center is below threshhold we dont want to move as item is in the center
+        if abs(center[0] - self.imgCx) < self.imgThreshX:
+            yaw = self.headYaw
+        #if on the right of image
+        elif center[0] > self.imgCx:
+            diff = abs(center[0] - self.imgCx)
             pos = diff * 0.001
-
-            self.headpos -= pos
-            self.pose(self.headpos, )
-        elif center[0] < self.imgC:
-            diff = abs(center[0] - self.imgC)
+            yaw = self.headYaw - pos
+        #lef side of image
+        elif center[0] < self.imgCx:
+            diff = abs(center[0] - self.imgCx)
             pos = diff * 0.001
-            self.headpos += pos
-            self.pose(self.headpos)
+            yaw = self.headYaw + pos
 
-    def pose(self, pos):
+        if abs(center[1] - self.imgCy) < self.imgThreshY:
+            pitch = self.headPitch
+        elif center[1] > self.imgCy:
+            diff = abs(center[1] - self.imgCy)
+            pos = diff * 0.01
+            pitch =self.headPitch - pos
+
+        elif center[1] < self.imgCy:
+            diff = abs(center[1] - self.imgCy)
+            pos = diff * 0.01
+            pitch =self.headPitch + pos
+        print(str(yaw)+"  "+ str(pitch))
+        self.pose(yaw,pitch)
+
+    def pose(self, yaw, pitch):
         # if  the goal head location is out of range dont move
+        #print(yaw)
+       # print(pitch)
+        if -1.1 >= self.headYaw >= 1.1:
+        #replace with current value
+           yaw = self.headYaw
+           print("yc")
+        if 0 >= self.headPitch >= 0.9:
+            pitch = self.headPitch
+            print("pc")
 
-        if -1.1 <= self.headpos <= 1.1:
+        angle_goal = naoqi_bridge_msgs.msg.JointAnglesWithSpeedGoal()
+        angle_goal.joint_angles.relative = 0
+        angle_goal.joint_angles.joint_names = ["HeadYaw", "HeadPitch"]
 
-            angle_goal = naoqi_bridge_msgs.msg.JointAnglesWithSpeedGoal()
-            angle_goal.joint_angles.relative = 0
-            #  angle_goal.joint_angles.joint_names = ["HeadYaw", "HeadPitch"]
-            angle_goal.joint_angles.joint_names = ["HeadYaw"]
-            angle_goal.joint_angles.joint_angles = [pos]
-            angle_goal.joint_angles.speed = 0.2
-            #   rospy.loginfo("Sending joint angles goal...")
-            self.angle_client.send_goal(angle_goal)
-            # result = self.angle_client.get_result()
+        angle_goal.joint_angles.joint_angles = [yaw, pitch]
+        angle_goal.joint_angles.speed = 0.2
 
-        else:
-            print("Too Far" + str(self.headpos))
+        self.angle_client.send_goal_and_wait(angle_goal)
+        result = self.angle_client.get_result()
+
+
 
     def imgCallback(self, rgb_data):
         try:
             # get images
             cv_image = self.bridge.imgmsg_to_cv2(rgb_data, "bgr8")
+            i = cv2.resize(cv_image, (320, 240))
+
             # get image dimensions on first run
             if self.imgH == 0:
-                self.imgH = numpy.size(cv_image, 0)
-                self.imgW = numpy.size(cv_image, 1)
-                self.imgC = self.imgW / 2
-                self.imgThresh = self.imgC * self.imgp
+                self.imgH = numpy.size(i, 0)
+                self.imgW = numpy.size(i, 1)
+                self.imgCx = self.imgW / 2
+                self.imgCy = self.imgH / 2
+                self.imgThreshX = self.imgCx * self.imgp
+                self.imgThreshY = self.imgCy * self.imgp
          #   cv2.imshow("Image window", cv_image)
-            i = cv2.resize(cv_image, (320, 240))
             self.detectface( i )
         except CvBridgeError, e:
             print e
@@ -174,10 +200,12 @@ class NaoSocial:
             minSize=(15, 15),
             flags=cv2.cv.CV_HAAR_SCALE_IMAGE )
         for (x, y, w, h) in faces:
-            self.count = self.count +1
-            print(self.count)
-            cv2.rectangle(frame , (x, y), (x + w, y + h), (0, 255, 0), 2)
 
+
+            cv2.rectangle(frame , (x, y), (x + w, y + h), (0, 255, 0), 2)
+            center = [x + (w/2),y + (h/2)]
+
+            self.calculateMovement(center)
         cv2.imshow("Image window", frame )
 
 
