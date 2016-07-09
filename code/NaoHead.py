@@ -30,23 +30,14 @@ class NaoSocial:
         self.imgThresh = 0
         self.headYaw = 1
         self.headPitch = 0
-        self.a1 = 0
-        self.b1 = 0
-        self.c1 = 0
-        self.a2 = 0
-        self.b2 = 0
-        self.c2 = 100
-        self.count = 0
+
 
         self.bridge = CvBridge()
         #self.image_sub = message_filters.Subscriber("/camera/image_raw", Image)
-        self.image_sub = message_filters.Subscriber("/videofile/image_raw", Image)
+        self.image_sub = rospy.Subscriber("/videofile/image_raw", Image,self.imgCallback)
 
-        self.ts = message_filters.ApproximateTimeSynchronizer([self.image_sub], 10, 0.5)
         self.statesub = rospy.Subscriber("/joint_states", JointState, self.jointstateC)
-        self.ts.registerCallback(self.imgCallback)
-        self.pub = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
-        self.t = Twist()
+
 
         # initialize movement client
         self.client = actionlib.SimpleActionClient("joint_trajectory", naoqi_bridge_msgs.msg.JointTrajectoryAction)
@@ -60,19 +51,9 @@ class NaoSocial:
         self.angle_client.wait_for_server()
         rospy.loginfo("Done.")
 
-        # trackbars
-        # create trackbars for hsv values
-        cv2.namedWindow("settings", 1)
-        cv2.createTrackbar('b1', 'settings', 0, 255, self.settingsCallback)
-        cv2.createTrackbar('g1', 'settings', 0, 255, self.settingsCallback)
-        cv2.createTrackbar('r1', 'settings', 0, 255, self.settingsCallback)
-        cv2.createTrackbar('b2', 'settings', 0, 255, self.settingsCallback)
-        cv2.createTrackbar('g2', 'settings', 0, 255, self.settingsCallback)
-        cv2.createTrackbar('r2', 'settings', 0, 255, self.settingsCallback)
+
         cv2.namedWindow("Image window", 1)
-        cv2.namedWindow("D", 1)
-        # cv2.namedWindow("depth", 1)
-        cv2.namedWindow("thresh", 1)
+
         cv2.startWindowThread()
 
 
@@ -87,41 +68,16 @@ class NaoSocial:
         self.headPitch = data.position[1]
       #  print(data)
 
-    def settingsCallback(self, data):
-        self.a1 = cv2.getTrackbarPos('b1', 'settings')
-        self.b1 = cv2.getTrackbarPos('g1', 'settings')
-        self.c1 = cv2.getTrackbarPos('r1', 'settings')
-        self.a2 = cv2.getTrackbarPos('b2', 'settings')
-        self.b2 = cv2.getTrackbarPos('g2', 'settings')
-        self.c2 = cv2.getTrackbarPos('r2', 'settings')
 
-    def detect(self, cv_image):
-        hsv_img = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
-
-        hsv_thresh = cv2.inRange(hsv_img,
-                                 numpy.array((self.a1, self.b1, self.c1)),
-                                 numpy.array((self.a2, self.b2, self.c2)))
-        contours, hierachy = cv2.findContours(hsv_thresh.copy(),
-                                              cv2.RETR_TREE,
-                                              cv2.CHAIN_APPROX_SIMPLE)
-        cv2.imshow("thresh", hsv_thresh)
-        for c in contours:
-            a = cv2.contourArea(c)
-            if a > 50.0:
-                cv2.drawContours(cv_image, c, -1, (255, 0, 0))
-                # find center of contour
-                moments = cv2.moments(c)
-                center = (int(moments['m10'] / moments['m00']), int(moments['m01'] / moments['m00']))
-
-                self.calculateMovement(center)
 
     def calculateMovement(self, center):
         #
-        yaw = 99.99
-        pitch =99.99
+        yaw = self.headYaw
+        pitch =self.headPitch
         #if the x of the center is below threshhold we dont want to move as item is in the center
         if abs(center[0] - self.imgCx) < self.imgThreshX:
             yaw = self.headYaw
+            print("yc")
         #if on the right of image
         elif center[0] > self.imgCx:
             diff = abs(center[0] - self.imgCx)
@@ -132,18 +88,19 @@ class NaoSocial:
             diff = abs(center[0] - self.imgCx)
             pos = diff * 0.001
             yaw = self.headYaw + pos
-
+#pitch
         if abs(center[1] - self.imgCy) < self.imgThreshY:
             pitch = self.headPitch
+            print("pc")
         elif center[1] > self.imgCy:
             diff = abs(center[1] - self.imgCy)
-            pos = diff * 0.01
-            pitch =self.headPitch - pos
+            pos = diff * 0.0001
+            pitch =self.headPitch + pos
 
         elif center[1] < self.imgCy:
             diff = abs(center[1] - self.imgCy)
-            pos = diff * 0.01
-            pitch =self.headPitch + pos
+            pos = diff * 0.0001
+            pitch =self.headPitch - pos
         print(str(yaw)+"  "+ str(pitch))
         self.pose(yaw,pitch)
 
@@ -151,20 +108,24 @@ class NaoSocial:
         # if  the goal head location is out of range dont move
         #print(yaw)
        # print(pitch)
-        if -1.1 >= self.headYaw >= 1.1:
-        #replace with current value
+
+        if yaw  < -1.1 or yaw > 1.1:
            yaw = self.headYaw
-           print("yc")
-        if 0 >= self.headPitch >= 0.9:
+
+
+        if pitch < 0 or pitch > 1:
             pitch = self.headPitch
-            print("pc")
+
+            # if  both the yaw and pitch doent need to be chance
+        if yaw == self.headYaw and pitch == self.headPitch:
+            return
 
         angle_goal = naoqi_bridge_msgs.msg.JointAnglesWithSpeedGoal()
         angle_goal.joint_angles.relative = 0
         angle_goal.joint_angles.joint_names = ["HeadYaw", "HeadPitch"]
 
         angle_goal.joint_angles.joint_angles = [yaw, pitch]
-        angle_goal.joint_angles.speed = 0.2
+        angle_goal.joint_angles.speed = 0.4
 
         self.angle_client.send_goal_and_wait(angle_goal)
         result = self.angle_client.get_result()
@@ -204,10 +165,20 @@ class NaoSocial:
 
             cv2.rectangle(frame , (x, y), (x + w, y + h), (0, 255, 0), 2)
             center = [x + (w/2),y + (h/2)]
+            cv2.circle(frame, (center[0],center[1]), 3, (0, 0, 255), -1)
 
             self.calculateMovement(center)
-        cv2.imshow("Image window", frame )
 
+        cv2.imshow("Image window", self.draw(frame) )
+
+    def draw(self,img):
+
+        cv2.line(img, (int(self.imgCx - self.imgThreshX),0), (int(self.imgCx -self.imgThreshX),  self.imgH), (0, 255, 0), 2)
+        cv2.line(img, ( int(self.imgCx + self.imgThreshX), 0), (int(self.imgCx + self.imgThreshX), self.imgH), (0, 255, 0), 2)
+
+        cv2.line(img, (0, int(self.imgCy - self.imgThreshY )), (self.imgW,  int(self.imgCy - self.imgThreshY )), (0, 255, 0), 0)
+        cv2.line(img, (0, int(self.imgCy + self.imgThreshY)), (self.imgW, int(self.imgCy + self.imgThreshY)), (0, 255, 0), 0)
+        return img
 
 
 
