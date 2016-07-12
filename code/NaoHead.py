@@ -17,8 +17,10 @@ import naoqi_bridge_msgs.msg
 import os
 import numpy
 from sensor_msgs.msg import JointState
+from nao_interaction_msgs.msg import (AudioSourceLocalization)
 
-
+# ver 2.1.3.3
+# Nao Ip 10.18.12.56
 class NaoSocial:
     def __init__(self):
         # initial trackbar settings
@@ -30,14 +32,19 @@ class NaoSocial:
         self.imgThresh = 0
         self.headYaw = 1
         self.headPitch = 0
+        self.init = 0
+        self.currentFace = [0,0]
 
 
+        self.image_pub = rospy.Publisher("nao_detection", Image,queue_size=10)
         self.bridge = CvBridge()
-        #self.image_sub = message_filters.Subscriber("/camera/image_raw", Image)
-        self.image_sub = rospy.Subscriber("/videofile/image_raw", Image,self.imgCallback)
+      #  self.image_sub = message_filters.Subscriber("/camera/image_raw", Image)
+        self.image_sub = rospy.Subscriber("/camera/image_raw", Image,self.imgCallback)
+        self.localization = rospy.Subscriber('/nao_audio/audio_source_localization', AudioSourceLocalization, self.localization_callback)
+
 
         self.statesub = rospy.Subscriber("/joint_states", JointState, self.jointstateC)
-
+        self.image  = numpy.zeros((160,120,3), numpy.uint8)
 
         # initialize movement client
         self.client = actionlib.SimpleActionClient("joint_trajectory", naoqi_bridge_msgs.msg.JointTrajectoryAction)
@@ -55,7 +62,27 @@ class NaoSocial:
         cv2.namedWindow("Image window", 1)
 
         cv2.startWindowThread()
+    def localization_callback(self,msg):
+        print (msg.head_pose.position.x)
 
+        # msg.azimuth.data
+        #msg.elevation.data =
+        #msg.confidence.data
+        #msg.energy.data
+
+        #msg.head_pose.position.x
+        #msg.head_pose.position.y
+        #msg.head_pose.position.z
+
+
+
+
+
+    def publishimg(self, cv_image):
+        try:#bgr8
+            self.image_pub.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
+        except CvBridgeError as e:
+            print(e)
 
 
     def __del__(self):
@@ -74,6 +101,9 @@ class NaoSocial:
         #
         yaw = self.headYaw
         pitch =self.headPitch
+
+        yawMultiplier = 0.007
+        pitchMultiplier =0.005
         #if the x of the center is below threshhold we dont want to move as item is in the center
         if abs(center[0] - self.imgCx) < self.imgThreshX:
             yaw = self.headYaw
@@ -81,12 +111,12 @@ class NaoSocial:
         #if on the right of image
         elif center[0] > self.imgCx:
             diff = abs(center[0] - self.imgCx)
-            pos = diff * 0.001
+            pos = diff * yawMultiplier
             yaw = self.headYaw - pos
         #lef side of image
         elif center[0] < self.imgCx:
             diff = abs(center[0] - self.imgCx)
-            pos = diff * 0.001
+            pos = diff * yawMultiplier
             yaw = self.headYaw + pos
 #pitch
         if abs(center[1] - self.imgCy) < self.imgThreshY:
@@ -94,14 +124,14 @@ class NaoSocial:
             print("pc")
         elif center[1] > self.imgCy:
             diff = abs(center[1] - self.imgCy)
-            pos = diff * 0.0001
+            pos = diff * pitchMultiplier
             pitch =self.headPitch + pos
 
         elif center[1] < self.imgCy:
             diff = abs(center[1] - self.imgCy)
-            pos = diff * 0.0001
+            pos = diff * pitchMultiplier
             pitch =self.headPitch - pos
-        print(str(yaw)+"  "+ str(pitch))
+      #  print(str(yaw)+"  "+ str(pitch))
         self.pose(yaw,pitch)
 
     def pose(self, yaw, pitch):
@@ -113,7 +143,7 @@ class NaoSocial:
            yaw = self.headYaw
 
 
-        if pitch < -1 or pitch > 2:
+        if pitch < -1 or pitch > 1.7:
             pitch = self.headPitch
 
             # if  both the yaw and pitch doent need to be chance
@@ -125,7 +155,7 @@ class NaoSocial:
         angle_goal.joint_angles.joint_names = ["HeadYaw", "HeadPitch"]
 
         angle_goal.joint_angles.joint_angles = [yaw, pitch]
-        angle_goal.joint_angles.speed = 0.4
+        angle_goal.joint_angles.speed = 0.2
 
         self.angle_client.send_goal_and_wait(angle_goal)
         result = self.angle_client.get_result()
@@ -136,18 +166,27 @@ class NaoSocial:
         try:
             # get images
             cv_image = self.bridge.imgmsg_to_cv2(rgb_data, "bgr8")
-            i = cv2.resize(cv_image, (320, 240))
+           # i = cv2.resize(cv_image, (320, 240))
 
             # get image dimensions on first run
             if self.imgH == 0:
-                self.imgH = numpy.size(i, 0)
-                self.imgW = numpy.size(i, 1)
+
+                self.imgH = numpy.size(cv_image, 0)
+                self.imgW = numpy.size(cv_image, 1)
                 self.imgCx = self.imgW / 2
                 self.imgCy = self.imgH / 2
                 self.imgThreshX = self.imgCx * self.imgp
                 self.imgThreshY = self.imgCy * self.imgp
-         #   cv2.imshow("Image window", cv_image)
-            self.detectface( i )
+                self.image =numpy.zeros((self.imgH,self.imgW,3), numpy.uint8)
+                self.init =1
+            #detect faces in the image
+            #outimg = self.detectface( cv_image )
+            self.image = cv_image
+           # cv2.imshow("Image window", self.image)
+
+            #publush images to rostopic
+          #  self.publishimg(outimg)
+
         except CvBridgeError, e:
             print e
 
@@ -161,33 +200,61 @@ class NaoSocial:
             scaleFactor=1.1,
             minSize=(15, 15),
             flags=cv2.cv.CV_HAAR_SCALE_IMAGE )
+        distnaceCenter = 999
+        self.currentFace[0] = 0
         for (x, y, w, h) in faces:
 
 
             cv2.rectangle(frame , (x, y), (x + w, y + h), (0, 255, 0), 2)
             center = [x + (w/2),y + (h/2)]
             cv2.circle(frame, (center[0],center[1]), 3, (0, 0, 255), -1)
+        #Oonly move to closes face to the center
+            currentdistanceC = abs(center[0] - self.imgCx)
+            if currentdistanceC < distnaceCenter:
+                self.currentFace = center
+        if self.currentFace[0] != 0:
+            self.calculateMovement(self.currentFace)
 
-            self.calculateMovement(center)
 
-        cv2.imshow("Image window", self.draw(frame) )
+            # cv2.imshow("Image window", self.draw(frame) )
+        return  self.draw(frame)
 
     def draw(self,img):
 
         cv2.line(img, (int(self.imgCx - self.imgThreshX),0), (int(self.imgCx -self.imgThreshX),  self.imgH), (0, 255, 0), 2)
         cv2.line(img, ( int(self.imgCx + self.imgThreshX), 0), (int(self.imgCx + self.imgThreshX), self.imgH), (0, 255, 0), 2)
 
-        cv2.line(img, (0, int(self.imgCy - self.imgThreshY )), (self.imgW,  int(self.imgCy - self.imgThreshY )), (0, 255, 0), 0)
-        cv2.line(img, (0, int(self.imgCy + self.imgThreshY)), (self.imgW, int(self.imgCy + self.imgThreshY)), (0, 255, 0), 0)
+        cv2.line(img, (0, int(self.imgCy - self.imgThreshY )), (self.imgW,  int(self.imgCy - self.imgThreshY )), (0, 255, 0), 2)
+        cv2.line(img, (0, int(self.imgCy + self.imgThreshY)), (self.imgW, int(self.imgCy + self.imgThreshY)), (0, 255, 0), 2)
         return img
+    def run(self):
+        while  True:
+          if self.init ==1:
+
+             img =  self.detectface(self.image)
+             cv2.imshow("Image window", img)
+          if cv2.waitKey(30) & 0xFF == ord('q'):
+              sys.exit()
+
+              break
+
+
+
+
+
+
 
 
 
 
 rospy.init_node('NaoSocial', anonymous=True)
 app = NaoSocial()
-
+app.run()
 
 
 
 rospy.spin()
+
+
+
+
