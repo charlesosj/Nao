@@ -113,7 +113,7 @@ class NaoSocial:
            yaw = self.headYaw
 
 
-        if pitch < 0 or pitch > 1:
+        if pitch < -1 or pitch > 2:
             pitch = self.headPitch
 
             # if  both the yaw and pitch doent need to be chance
@@ -153,6 +153,7 @@ class NaoSocial:
 
     def detectface(self,frame):
         gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+        cv2.equalizeHist(gray, gray)
         faceCascade = cv2.CascadeClassifier("haarcascades/haarcascade_frontalface_alt2.xml")
         faces = faceCascade.detectMultiScale(
             gray,
