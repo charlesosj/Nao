@@ -24,11 +24,20 @@
   
   
   <node pkg="naoqi_driver_py" type="naoqi_joint_states.py" name="naoqi_joint_states" required="true" args="--pip=$(arg nao_ip) --pport=$(arg nao_port)" />
+
+  <node pkg="nao_apps" type="nao_leds.py" name="nao_leds" required="true" args="--pip=$(arg nao_ip) --pport=$(arg nao_port)"  />
+
   
- 
+   <node 
+    pkg="nao_audio" 
+    type="nao_audio.py" 
+    name="nao_audio" 
+    args="--pip=$(arg nao_ip) --pport=$(arg nao_port)"
+    output="screen"
+  />
 
 
- <!-- enable walker -->
+ <!-- enable   <node pkg="nao_apps" type="nao_behaviors.py" name="nao_behaviors" required="true" args="--pip=$(arg nao_ip) --pport=$(arg nao_port)"  /> walker -->
   <include file="$(find nao_apps)/launch/walker.launch" >
     <arg name="nao_ip"        value="$(arg nao_ip)" />
   </include>

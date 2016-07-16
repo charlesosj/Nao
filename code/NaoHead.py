@@ -18,9 +18,21 @@ import os
 import numpy
 from sensor_msgs.msg import JointState
 from nao_interaction_msgs.msg import (AudioSourceLocalization)
+import time
+from naoqi_bridge_msgs.msg import(
+    BlinkAction,
+    BlinkResult,
+    BlinkFeedback,
+    FadeRGB
+    )
 
 # ver 2.1.3.3
 # Nao Ip 10.18.12.56
+#vice activitiy detection
+#behaviours script
+#manamaging conflics, keep general
+#visualization in rviz
+#rosbag logging
 class NaoSocial:
     def __init__(self):
         # initial trackbar settings
@@ -37,6 +49,8 @@ class NaoSocial:
 
 
         self.image_pub = rospy.Publisher("nao_detection", Image,queue_size=10)
+        self.led_pub = rospy.Publisher("/fade_rgb",FadeRGB,queue_size =10)
+        self.ledmsg = FadeRGB();
         self.bridge = CvBridge()
       #  self.image_sub = message_filters.Subscriber("/camera/image_raw", Image)
         self.image_sub = rospy.Subscriber("/camera/image_raw", Image,self.imgCallback)
@@ -48,10 +62,8 @@ class NaoSocial:
 
         # initialize movement client
         self.client = actionlib.SimpleActionClient("joint_trajectory", naoqi_bridge_msgs.msg.JointTrajectoryAction)
-        self.stiffness_client = actionlib.SimpleActionClient("joint_stiffness_trajectory",
-                                                             naoqi_bridge_msgs.msg.JointTrajectoryAction)
-        self.angle_client = actionlib.SimpleActionClient("joint_angles_action",
-                                                         naoqi_bridge_msgs.msg.JointAnglesWithSpeedAction)
+        self.stiffness_client = actionlib.SimpleActionClient("joint_stiffness_trajectory", naoqi_bridge_msgs.msg.JointTrajectoryAction)
+        self.angle_client = actionlib.SimpleActionClient("joint_angles_action",naoqi_bridge_msgs.msg.JointAnglesWithSpeedAction)
         rospy.loginfo("Waiting for joint_trajectory and joint_stiffness servers...")
         self.client.wait_for_server()
         self.stiffness_client.wait_for_server()
@@ -62,10 +74,19 @@ class NaoSocial:
         cv2.namedWindow("Image window", 1)
 
         cv2.startWindowThread()
+       # self.leds("on")
     def localization_callback(self,msg):
-        print (msg.head_pose.position.x)
 
-        # msg.azimuth.data
+        yaw = msg.azimuth.data
+        print(yaw)
+   #     self.pose(yaw,self.headPitch)
+        #time.sleep(0.5)
+
+        #  print (msg.head_pose.position.x)
+
+
+
+       #  msg.azimuth.data
         #msg.elevation.data =
         #msg.confidence.data
         #msg.energy.data
@@ -87,6 +108,7 @@ class NaoSocial:
 
     def __del__(self):
         cv2.destroyAllWindows()
+        self.leds("off")
 
 
     def jointstateC(self, data):
@@ -227,9 +249,33 @@ class NaoSocial:
         cv2.line(img, (0, int(self.imgCy - self.imgThreshY )), (self.imgW,  int(self.imgCy - self.imgThreshY )), (0, 255, 0), 2)
         cv2.line(img, (0, int(self.imgCy + self.imgThreshY)), (self.imgW, int(self.imgCy + self.imgThreshY)), (0, 255, 0), 2)
         return img
+
+    def leds(self, s):
+        if s == "on":
+            self.ledmsg.led_name = "AllLeds"
+            self.ledmsg.color.r = 0
+            self.ledmsg.color.g = 0
+            self.ledmsg.color.b = 1
+            self.ledmsg.color.a = 0
+            self.ledmsg.fade_duration.secs = 1
+
+        if s == "off":
+            self.ledmsg.led_name = "AllLeds"
+            self.ledmsg.color.r = 0
+            self.ledmsg.color.g = 0
+            self.ledmsg.color.b = 0
+            self.ledmsg.color.a = 0
+            self.ledmsg.fade_duration.secs = 1
+
+        self.led_pub.publish(self.ledmsg)
+
     def run(self):
+
         while  True:
           if self.init ==1:
+
+
+
 
              img =  self.detectface(self.image)
              cv2.imshow("Image window", img)
@@ -237,12 +283,6 @@ class NaoSocial:
               sys.exit()
 
               break
-
-
-
-
-
-
 
 
 
