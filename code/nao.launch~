@@ -37,7 +37,7 @@
   />
 
 
- <!-- enable   <node pkg="nao_apps" type="nao_behaviors.py" name="nao_behaviors" required="true" args="--pip=$(arg nao_ip) --pport=$(arg nao_port)"  /> walker -->
+ <!-- enable  walker -->
   <include file="$(find nao_apps)/launch/walker.launch" >
     <arg name="nao_ip"        value="$(arg nao_ip)" />
   </include>

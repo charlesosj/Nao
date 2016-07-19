@@ -235,7 +235,12 @@ class NaoSocial:
             if currentdistanceC < distnaceCenter:
                 self.currentFace = center
         if self.currentFace[0] != 0:
-            self.calculateMovement(self.currentFace)
+            # if face is too far away from the center we dont want to move
+            if abs(self.currentFace[0]  - self.imgCx  )  <  self.imgThreshX * 2:
+                self.calculateMovement(self.currentFace)
+
+
+
 
 
             # cv2.imshow("Image window", self.draw(frame) )
@@ -273,10 +278,6 @@ class NaoSocial:
 
         while  True:
           if self.init ==1:
-
-
-
-
              img =  self.detectface(self.image)
              cv2.imshow("Image window", img)
           if cv2.waitKey(30) & 0xFF == ord('q'):
