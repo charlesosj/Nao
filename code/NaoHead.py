@@ -79,7 +79,7 @@ class NaoSocial:
 
         yaw = msg.azimuth.data
         print(yaw)
-   #     self.pose(yaw,self.headPitch)
+        self.pose(yaw,self.headPitch)
         #time.sleep(0.5)
 
         #  print (msg.head_pose.position.x)
@@ -236,7 +236,7 @@ class NaoSocial:
                 self.currentFace = center
         if self.currentFace[0] != 0:
             # if face is too far away from the center we dont want to move
-            if abs(self.currentFace[0]  - self.imgCx  )  <  self.imgThreshX * 2:
+            if abs(self.currentFace[0]  - self.imgCx  )  <  self.imgThreshX * 2.5:
                 self.calculateMovement(self.currentFace)
 
 

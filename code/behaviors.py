@@ -6,6 +6,7 @@ import almath
 import subprocess #running ros
 import xmlrpclib
 import os
+import argparse
 
 
 from naoqi import ALProxy
@@ -15,11 +16,32 @@ class NaoBehavior:
         # Create proxy to ALBehaviorManager
         self.managerProxy = ALProxy("ALBehaviorManager", robotIP, 9559)
         self.motionProxy  = ALProxy("ALMotion", robotIP, 9559)
+        self.animatedSpeechProxy = ALProxy("ALAnimatedSpeech", robotIP, 9559)
         rospy.Subscriber("/nao_behavior/run_behavior", String, self.run_callback)
         rospy.Subscriber("/nao_behavior/stop_behavior", String, self.stop)
         self.wakeup()
 
+        self.auto = ALProxy("ALAutonomousLife", robotIP, 9559)
+
+        self.activeBehavior = 0
+        self.behaviorCount =0
+        self.nextBehavior = 1
+        self.autostate()
+    def disableAuto(self):
+        self.auto.stopAll()
+
+    def autostate(self):
+
+        self.auto.setState('solitary')
+
+
     def run_callback(self,data):
+        self.auto.setState('disabled')
+
+        self.say(data.data)
+        self.autostate()
+        return
+
         if data.data == 'wakeup':
             self.wakeup()
             return
@@ -32,27 +54,47 @@ class NaoBehavior:
             return
 
         self.launchBehavior(data.data)
+    def say(self,data):
+        # set the local configuration
+        configuration = {"bodyLanguageMode": "contextual"}
+        # say the text with the local configuration
+        self.animatedSpeechProxy.say(data, configuration)
 
 
     def launchBehavior(self, behaviorName):
         ''' Launch and stop a behavior, if possible. '''
+        self.behaviorCount = self.behaviorCount +1
+        behaviorNumber = self.behaviorCount
 
-        # Check that the behavior exists.
-        if (self.managerProxy.isBehaviorInstalled(behaviorName)):
+        while True:
+            if self.activeBehavior ==0 and self.nextBehavior == behaviorNumber:
+                self.activeBehavior =1
+                # Check that the behavior exists.
+                if (self.managerProxy.isBehaviorInstalled(behaviorName)):
+                    # Check that it is not already running.
+                    if (not self.managerProxy.isBehaviorRunning(behaviorName)):
+                        # Launch behavior. This is a blocking call, use post if you do not
+                        # want to wait for the behavior to finish.
+                        rospy.loginfo("Running Behavior")
+                        self.managerProxy.post.runBehavior(behaviorName)
 
-            # Check that it is not already running.
-            if (not self.managerProxy.isBehaviorRunning(behaviorName)):
-                # Launch behavior. This is a blocking call, use post if you do not
-                # want to wait for the behavior to finish.
-                rospy.loginfo("Running Behavior")
-                self.managerProxy.post.runBehavior(behaviorName)
-                time.sleep(0.5)
-            else:
-                rospy.loginfo( "Behavior is already running.")
+                        while( self.managerProxy.isBehaviorRunning(behaviorName) == True):
+                            time.sleep(0.2)
 
-        else:
-            rospy.loginfo( "Behavior not found.")
-            return
+                    else:
+                        rospy.loginfo( "Behavior is already running.")
+
+                else:
+                    rospy.loginfo( "Behavior not found.")
+
+                self.nextBehavior = behaviorNumber +1
+
+                self.activeBehavior =0
+                return
+            elif self.activeBehavior ==1:
+                print( str(behaviorNumber) +'queud')
+
+
 
 
     def stop(self,behaviorName):
@@ -133,7 +175,9 @@ class NaoBehavior:
 
         #names = managerProxy.getRunningBehaviors()
     def on_shutdown(self):
+        self.disableAuto()
         self.rest()
+
 
 def check_ros():
     # check if ros is running, if not start it
@@ -143,9 +187,9 @@ def check_ros():
     except:
         roscore = subprocess.Popen('roscore')
         time.sleep(1)  # wait a bit to be sure the roscore is really launched
-def launch_nodes():
+def launch_nodes(nao_ip):
     path = os.path.dirname(os.path.realpath(__file__))
-    path = path + '/nao.launch nao_ip:=10.18.12.56'
+    path = path + '/nao.launch nao_ip:='+nao_ip
     subprocess.Popen('roslaunch '+ path, shell=True)
 
 
@@ -159,12 +203,13 @@ if __name__ == "__main__":
     print "Usage python behaviors.py 10.18.12.56 "
     sys.exit(1)
 
+  nao_ip = sys.argv[1]
   check_ros()
   rospy.init_node('NaoBehavior', anonymous=True)
-  launch_nodes()
+  launch_nodes(nao_ip)
 
 
-  app = NaoBehavior(sys.argv[1])
+  app = NaoBehavior(nao_ip)
   rospy.spin()
 
   #what to do on shutdown

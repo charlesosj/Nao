@@ -7,8 +7,21 @@ Everything launched from the code folder
 Behaviors.py
 when run robot will stand up and  enable all joints.. on exit will sit down and disable joints
 python behaviors.py 10.18.12.56 (Robot IP)
-rostopic pub -1 /nao_behavior/run_behavior std_msgs/String -- 'System/animations/Stand/Emotions/Neutral/Hello_1'
 
+rostopic pub -1 /nao_behavior/run std_msgs/String -- 'System/animations/Stand/Emotions/Neutral/Hello_1'
+Behaviors can be queued
+you can replace the string with
+wakeup
+rest
+wait <seconds>
+say
+say animated
+help  provides list of system behaviors
+anyother string is treated as a system behavior
+
+if you say after a behavior a move, both will be executed at the same time
+if you want the robot to move and then say, put a wait in between the calls
+This doesnt apply to say animated, that will always run on its own
 
 
 RVIZ Display
