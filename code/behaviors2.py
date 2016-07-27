@@ -11,6 +11,7 @@ from naoqi import ALProxy
 from std_msgs.msg import String
 import argparse
 import threading
+from nao_interaction_msgs.msg import (AudioSourceLocalization)
 
 class NaoBehavior:
     def __init__(self, robotIP ,port):
@@ -27,19 +28,92 @@ class NaoBehavior:
         # activation
         self.active = False
         self.resting = False
+        self.speechini= False
+
+
 
         # proxies
+        self.memoryProxy = ALProxy("ALMemory", robotIP, port)
+
         self.managerProxy = ALProxy("ALBehaviorManager", robotIP, port)
         self.motionProxy = ALProxy("ALMotion", robotIP, port)
         self.animatedSpeechProxy = ALProxy("ALAnimatedSpeech", robotIP, port)
         self.navigationProxy = ALProxy("ALNavigation", robotIP, port)
         self.postureProxy = ALProxy("ALRobotPosture", robotIP, port)
+        self.asr = ALProxy("ALSpeechRecognition", robotIP, port)
+
+        self.autonomousMovesProxy = ALProxy("ALAutonomousMoves", robotIP, port)
+        self.autonomousMovesProxy.setExpressiveListeningEnabled(False)
+        self.memValue = "WordRecognized"
         self.tts = ALProxy("ALTextToSpeech", robotIP, port)
         self.tts.setParameter("speed", 60)
-
-        #topic
+        #topics
         rospy.Subscriber("/nao_behavior/add", String, self.run_callback)
+        rospy.Subscriber("/nao_audio/audio_source_localization", AudioSourceLocalization, self.audio_callback)
+        self.speechPub = rospy.Publisher('/nao_behavior/speech_detection', AudioSourceLocalization, queue_size=5)
+        #speech ini
+
         self.breath(True)
+
+      #  self.asr.setLanguage("English")
+
+
+    def audio_callback(self,msg):
+
+        if self.speechini == False :
+            self.speechini = True
+            self.asr.pause(True)
+            self.vocabulary = ["yes", "no", "please", "hello","the","be","to","of","and","in","that","have","it","robot"]
+
+            self.asr.setVocabulary(self.vocabulary, True)
+            self.asr.setVisualExpression(True)
+            self.asr.setAudioExpression(True)
+
+            self.asr.subscribe("ASR")
+
+
+        self.asr.pause(False)
+        nodetectionCount = 0
+       # print  msg.azimuth.data
+        while True:
+
+            time.sleep(0.8)
+            speech = self.memoryProxy.getData(self.memValue, 0)
+            voice = self.memoryProxy.getData('SpeechDetected', 0)
+            print voice
+            if (voice ==1 ):
+                if speech[1] > 0.1:
+                    nodetectionCount =0
+                    print speech
+                    self.speechPub.publish(msg)
+                    return
+            else:
+                nodetectionCount +=1
+            if nodetectionCount >10:
+                self.asr.pause(True)
+                return
+
+
+
+
+       # msg.azimuth.data = value[1][0]
+      #  msg.elevation.data = value[1][1]
+      #  msg.confidence.data = value[1][2]
+     #   msg.energy.data = value[1][3]
+
+     #   msg.head_pose.position.x = value[2][0]
+      #  msg.head_pose.position.y = value[2][1]
+      #  msg.head_pose.position.z = value[2][2]
+      #  msg.head_pose.orientation.x = value[2][3]
+      #  msg.head_pose.orientation.y = value[2][4]
+      #  msg.head_pose.orientation.z = value[2][5]
+
+    #run speech recognition
+
+
+
+
+
     def navigate(self,x):
         self.checkawake()
 
@@ -154,6 +228,7 @@ class NaoBehavior:
         self.motionProxy.rest()
         time.sleep(1)
         self.motionProxy.stiffnessInterpolation("Body", 0, 0.5)
+        self.asr.unsubscribe("ASR")
 
     def breath(self, boolv):
         # pBpm is a float between 5 and 30 setting the breathing frequency in beats per minute.
@@ -168,9 +243,9 @@ class NaoBehavior:
             self.breathEnabled = False
 
 
-        self.motionProxy.setBreathEnabled('Body', boolv)
-
-        self.motionProxy.setBreathEnabled('Head',False)
+        self.motionProxy.setBreathEnabled('Legs' , boolv)
+        self.motionProxy.setBreathEnabled( 'Arms', boolv)
+       # self.motionProxy.setBreathEnabled('Head',False)
 
     def wakeup(self):
         # Wake up robot
@@ -224,6 +299,7 @@ class NaoBehavior:
             rospy.loginfo(x)
 
     def on_shutdown(self):
+       # self.asr.unsubscribe("ASR")
         self.rest()
 
 
@@ -257,6 +333,8 @@ if __name__ == "__main__":
     launch_nodes(args.ip)
 
     app = NaoBehavior(args.ip, args.port)
+
+    #time.sleep(2)
 
     rospy.spin()
 

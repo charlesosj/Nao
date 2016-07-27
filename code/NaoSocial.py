@@ -32,6 +32,7 @@ class NaoSocial:
         cv2.namedWindow("Image window", 1)
         self.bridge = CvBridge()
         cv2.startWindowThread()
+        self.imgthreshMultiplier = 3
 
         self.imginfo=[0,0]  #x y
         self.imgCenter=[0,0] # xy
@@ -43,7 +44,8 @@ class NaoSocial:
         self.headOdom = [0,0] # yaw , pitch
         self.imgin =0
         self.init =0
-
+        self.habituation = 0
+        self.undetectedcount=0
 
         #publisher
         self.image_pub = rospy.Publisher("nao_detection", Image,queue_size=10)
@@ -52,6 +54,8 @@ class NaoSocial:
         self.image_sub = rospy.Subscriber("/camera/image_raw", Image,self.imgCallback)
         self.statesub = rospy.Subscriber("/joint_states", JointState, self.jointstateC)
         self.image  = numpy.zeros((160,120,3), numpy.uint8)
+        self.voiceDetection = rospy.Subscriber("/nao_behavior/speech_detection", AudioSourceLocalization, self.speechCallback)
+
 
 
         #joint clients
@@ -68,6 +72,22 @@ class NaoSocial:
         self.angle_client.wait_for_server()
         rospy.loginfo("connected to servers.")
 
+    def speechCallback(self,msg):
+
+    # msg.azimuth.data = value[1][0]
+    #  msg.elevation.data = value[1][1]
+    #  msg.confidence.data = value[1][2]
+    #   msg.energy.data = value[1][3]
+
+    #   msg.head_pose.position.x = value[2][0]
+    #  msg.head_pose.position.y = value[2][1]
+    #  msg.head_pose.position.z = value[2][2]
+    #  msg.head_pose.orientation.x = value[2][3]
+    #  msg.head_pose.orientation.y = value[2][4]
+
+
+        #self.pose2( msg.azimuth.data, msg.elevation.data  )
+          self.pose2(msg.head_pose.position.x, msg.head_pose.position.y)
 
 
     def jointstateC(self, data):
@@ -122,12 +142,23 @@ class NaoSocial:
         if currentFace[0] != 0:
             # if face is too far away from the center we dont want to move
 
-        #    print abs(currentFace[0] - self.imginfo[0])
-
-
-            if abs(currentFace[0] - self.imgCenter[0]) < self.imgThreshold[0] * 2.5:
-
+            if abs(currentFace[0] - self.imgCenter[0]) < self.imgThreshold[0] * self.imgthreshMultiplier:
                 self.calculateMovement(currentFace)
+                self.habituation +=1
+                self.undetectedcount = 0
+                self.imgthreshMultiplier = 3
+                if (self.habituation  %20) == 0:
+                    print 'nodding'
+                    self.nod()
+
+        else:
+            self.undetectedcount +=1
+            if self.undetectedcount >120:
+                self.habituation = 0
+                self.imgthreshMultiplier = 9999
+                self.undetectedcount = 0
+              #  print "reset"
+
         return self.image
 
     def calculateMovement(self, center):
@@ -169,16 +200,29 @@ class NaoSocial:
 
         self.pose(yaw, pitch)
 
+    def nod(self):
+        prevodom = self.headOdom
+        odom = self.headOdom
+        odom[1] -= 0.2
+        self.pose2(odom[0],odom[1],0.08)
+
+        odom[1] += 0.2
+        self.pose2(odom[0], odom[1],0.08)
+
+       # self.pose2(prevodom[0], prevodom[1], 0.1)
+
+
+
     def pose(self, yaw, pitch):
         # if  the goal head location is out of range dont move
         # print(yaw)
         # print(pitch)
 
         if yaw < -1.1 or yaw > 1.1:
-            yaw = self.headYaw
+            yaw = self.headOdom[0]
 
         if pitch < -1 or pitch > 1.7:
-            pitch = self.headPitch
+            pitch = self.headOdom[1]
 
             # if  both the yaw and pitch doent need to be chance
         if yaw == self.headOdom[0] and pitch == self.headOdom[1]:
@@ -189,7 +233,23 @@ class NaoSocial:
         angle_goal.joint_angles.joint_names = ["HeadYaw", "HeadPitch"]
 
         angle_goal.joint_angles.joint_angles = [yaw, pitch]
-        angle_goal.joint_angles.speed = 0.2
+        angle_goal.joint_angles.speed = 0.1
+
+        self.angle_client.send_goal_and_wait(angle_goal)
+        result = self.angle_client.get_result()
+
+
+    def pose2(self, yaw, pitch,speed):
+
+
+
+
+        angle_goal = naoqi_bridge_msgs.msg.JointAnglesWithSpeedGoal()
+        angle_goal.joint_angles.relative = 0
+        angle_goal.joint_angles.joint_names = ["HeadYaw", "HeadPitch"]
+
+        angle_goal.joint_angles.joint_angles = [yaw, pitch]
+        angle_goal.joint_angles.speed = speed
 
         self.angle_client.send_goal_and_wait(angle_goal)
         result = self.angle_client.get_result()
@@ -204,7 +264,9 @@ class NaoSocial:
         self.imgThreshold[0] = self.imgCenter[0] * self.imgp
         self.imgThreshold[1] = self.imgCenter[1] * self.imgp
         self.image = numpy.zeros((self.imginfo[0], self.imginfo[1], 3), numpy.uint8)
+        self.imgthreshMultiplier = 999
         self.init =1
+
     def run(self):
 
         while  True:
