@@ -86,11 +86,6 @@ class face:
         print angles[0] , angles[1]
         curangles =   self.motionProxy.getAngles(["HeadYaw", "HeadPitch"], True)
 
-  #      if -0.04 <=  angles[0] <= 0.04  :
-   #         angles[0] = curangles[1]
-  #      if  -0.04 <=  angles[1] <= 0.04 :
-     #       angles[1] = curangles[0]
-
         names = ["HeadYaw", "HeadPitch"]
        # print angles[0] , angles[1]
         fractionMaxSpeed = 0.1

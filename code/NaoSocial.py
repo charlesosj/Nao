@@ -7,18 +7,20 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 from geometry_msgs.msg import Twist
 import roslib
-
+from naoqi import *
 # from rospy.exceptions import ROSException
 roslib.load_manifest('naoqi_driver')
 
 import actionlib
 import naoqi_bridge_msgs.msg
-
+import threading
 import os
 import numpy
 from sensor_msgs.msg import JointState
 from nao_interaction_msgs.msg import (AudioSourceLocalization)
 import time
+from std_msgs.msg import String,Bool, Float32MultiArray
+
 from naoqi_bridge_msgs.msg import(
     BlinkAction,
     BlinkResult,
@@ -45,50 +47,53 @@ class NaoSocial:
         self.imgin =0
         self.init =0
         self.habituation = 0
+        self.speechCount =0
         self.undetectedcount=0
+        self.searching = False
+
+        self.state ='nothing'
+        self.motionProxy = ALProxy("ALMotion", '10.18.12.56', 9559)
+
 
         #publisher
         self.image_pub = rospy.Publisher("nao_detection", Image,queue_size=10)
+        self.behaviorpub = rospy.Publisher('/nao_behavior/add', String, queue_size=5)
+        self.headpub = rospy.Publisher('/nao_behavior/head', Float32MultiArray, queue_size=1)
+
 
         #subscribers
         self.image_sub = rospy.Subscriber("/camera/image_raw", Image,self.imgCallback)
         self.statesub = rospy.Subscriber("/joint_states", JointState, self.jointstateC)
         self.image  = numpy.zeros((160,120,3), numpy.uint8)
-        self.voiceDetection = rospy.Subscriber("/nao_behavior/speech_detection", AudioSourceLocalization, self.speechCallback)
+        self.voiceDetection = rospy.Subscriber("/nao_behavior/speech_detection", Bool, self.speechCallback)
 
 
 
-        #joint clients
 
-        # initialize movement client
-        self.client = actionlib.SimpleActionClient("joint_trajectory", naoqi_bridge_msgs.msg.JointTrajectoryAction)
-        self.stiffness_client = actionlib.SimpleActionClient("joint_stiffness_trajectory",
-                                                             naoqi_bridge_msgs.msg.JointTrajectoryAction)
-        self.angle_client = actionlib.SimpleActionClient("joint_angles_action",
-                                                         naoqi_bridge_msgs.msg.JointAnglesWithSpeedAction)
-        rospy.loginfo("Waiting for joint_trajectory and joint_stiffness servers...")
-        self.client.wait_for_server()
-        self.stiffness_client.wait_for_server()
-        self.angle_client.wait_for_server()
-        rospy.loginfo("connected to servers.")
+
+    def headmove(self, angles):
+
+        curangles = self.motionProxy.getAngles(["HeadYaw", "HeadPitch"], True)
+
+        names = ["HeadYaw", "HeadPitch"]
+        # print angles[0] , angles[1]
+        fractionMaxSpeed = 0.1
+        id = self.motionProxy.post.setAngles(names, angles, fractionMaxSpeed)
+        self.motionProxy.wait(id, 0)
+        #
+
+
+    def hello(self):
+        str = 'System/animations/Stand/Gestures/Hey_1'
+        self.behaviorpub.publish(str)
+        str = 'say hello! I am Nao. How are you?'
+        self.behaviorpub.publish(str)
+
+        return 'done'
+
 
     def speechCallback(self,msg):
-
-    # msg.azimuth.data = value[1][0]
-    #  msg.elevation.data = value[1][1]
-    #  msg.confidence.data = value[1][2]
-    #   msg.energy.data = value[1][3]
-
-    #   msg.head_pose.position.x = value[2][0]
-    #  msg.head_pose.position.y = value[2][1]
-    #  msg.head_pose.position.z = value[2][2]
-    #  msg.head_pose.orientation.x = value[2][3]
-    #  msg.head_pose.orientation.y = value[2][4]
-
-
-        #self.pose2( msg.azimuth.data, msg.elevation.data  )
-          self.pose2(msg.head_pose.position.x, msg.head_pose.position.y)
-
+        self.speechCount += 1
 
     def jointstateC(self, data):
         #keeps our odom up to date
@@ -143,21 +148,42 @@ class NaoSocial:
             # if face is too far away from the center we dont want to move
 
             if abs(currentFace[0] - self.imgCenter[0]) < self.imgThreshold[0] * self.imgthreshMultiplier:
+
+                #if a face is found whles we are searching stop it
+                if self.searching == True:
+                    self.behaviorpub.publish('stop')
+                    self.searching = False
+
+
                 self.calculateMovement(currentFace)
+                #if first time detecting say hello
+                if self.habituation ==0:
+                     hi =self.hello()
+                     self.state ='detected'
+
                 self.habituation +=1
                 self.undetectedcount = 0
-                self.imgthreshMultiplier = 3
-                if (self.habituation  %20) == 0:
+                self.imgthreshMultiplier = 6
+                if (self.habituation  %51) == 0:
                     print 'nodding'
-                    self.nod()
+                    self.behaviorpub.publish('nod')
+
 
         else:
             self.undetectedcount +=1
-            if self.undetectedcount >120:
+            if self.undetectedcount >150 and self.state !='waiting':
                 self.habituation = 0
+                self.speechCount = 0
                 self.imgthreshMultiplier = 9999
                 self.undetectedcount = 0
-              #  print "reset"
+                self.state ='waiting'
+                print "reset"
+
+            if self.state == 'waiting' and  (self.undetectedcount % 200)== 0:
+
+                self.searching =True
+                self.behaviorpub.publish('search')
+                print "searching"
 
         return self.image
 
@@ -172,7 +198,7 @@ class NaoSocial:
         pitchMultiplier = 0.005
         # if the x of the center is below threshhold we dont want to move as item is in the center
         if abs(center[0] - self.imgCenter[0]) < self.imgThreshold[0]:
-            print("yc")
+            i =1
         # if on the right of image
         elif center[0] > self.imgCenter[0]:
             diff = abs(center[0] - self.imgCenter[0])
@@ -191,25 +217,18 @@ class NaoSocial:
         elif center[1] > self.imgCenter[1]:
             diff = abs(center[1] - self.imgCenter[1])
             pos = diff * pitchMultiplier
-            pitch = yaw + pos
+            pitch += pos
 
         elif center[1] < self.imgCenter[1]:
             diff = abs(center[1] - self.imgCenter[1])
             pos = diff * pitchMultiplier
             pitch -= pos
 
-        self.pose(yaw, pitch)
-
-    def nod(self):
-        prevodom = self.headOdom
-        odom = self.headOdom
-        odom[1] -= 0.2
-        self.pose2(odom[0],odom[1],0.08)
-
-        odom[1] += 0.2
-        self.pose2(odom[0], odom[1],0.08)
-
-       # self.pose2(prevodom[0], prevodom[1], 0.1)
+       # self.pose(yaw, pitch)
+       # self.headmove([yaw,pitch])
+        d = Float32MultiArray()
+        d.data = [yaw,pitch]
+        self.headpub.publish(d)
 
 
 
@@ -218,15 +237,13 @@ class NaoSocial:
         # print(yaw)
         # print(pitch)
 
-        if yaw < -1.1 or yaw > 1.1:
+        if yaw < -3.1 or yaw > 3.1:
             yaw = self.headOdom[0]
 
-        if pitch < -1 or pitch > 1.7:
+        if pitch < -3 or pitch > 3:
             pitch = self.headOdom[1]
 
-            # if  both the yaw and pitch doent need to be chance
-        if yaw == self.headOdom[0] and pitch == self.headOdom[1]:
-            return
+
 
         angle_goal = naoqi_bridge_msgs.msg.JointAnglesWithSpeedGoal()
         angle_goal.joint_angles.relative = 0
@@ -239,20 +256,6 @@ class NaoSocial:
         result = self.angle_client.get_result()
 
 
-    def pose2(self, yaw, pitch,speed):
-
-
-
-
-        angle_goal = naoqi_bridge_msgs.msg.JointAnglesWithSpeedGoal()
-        angle_goal.joint_angles.relative = 0
-        angle_goal.joint_angles.joint_names = ["HeadYaw", "HeadPitch"]
-
-        angle_goal.joint_angles.joint_angles = [yaw, pitch]
-        angle_goal.joint_angles.speed = speed
-
-        self.angle_client.send_goal_and_wait(angle_goal)
-        result = self.angle_client.get_result()
 
     def set_ini_var(self, cv_image):
         # get height and with

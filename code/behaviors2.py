@@ -4,15 +4,19 @@ import subprocess  # running ros
 import sys
 import time
 import xmlrpclib
+import message_filters
+import roslib
+import actionlib
+import naoqi_bridge_msgs.msg
 
 import almath
 import rospy
 from naoqi import ALProxy
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool ,Float32MultiArray
 import argparse
 import threading
 from nao_interaction_msgs.msg import (AudioSourceLocalization)
-
+from sensor_msgs.msg import JointState
 class NaoBehavior:
     def __init__(self, robotIP ,port):
 
@@ -29,6 +33,9 @@ class NaoBehavior:
         self.active = False
         self.resting = False
         self.speechini= False
+        self.headOdom = [0,0]
+        self.stop = False
+        self.headlock =False
 
 
 
@@ -46,16 +53,65 @@ class NaoBehavior:
         self.autonomousMovesProxy.setExpressiveListeningEnabled(False)
         self.memValue = "WordRecognized"
         self.tts = ALProxy("ALTextToSpeech", robotIP, port)
-        self.tts.setParameter("speed", 60)
+        self.tts.setParameter("speed", 100)
+
         #topics
         rospy.Subscriber("/nao_behavior/add", String, self.run_callback)
-        rospy.Subscriber("/nao_audio/audio_source_localization", AudioSourceLocalization, self.audio_callback)
-        self.speechPub = rospy.Publisher('/nao_behavior/speech_detection', AudioSourceLocalization, queue_size=5)
-        #speech ini
+        self.statesub = rospy.Subscriber("/joint_states", JointState, self.jointstateC)
 
+        rospy.Subscriber("/nao_audio/audio_source_localization", AudioSourceLocalization, self.audio_callback)
+        self.speechPub = rospy.Publisher('/nao_behavior/speech_detection', Bool, queue_size=5)
+
+        #speech ini
+        rospy.Subscriber("/nao_behavior/head", Float32MultiArray, self.move)
         self.breath(True)
 
-      #  self.asr.setLanguage("English")
+    def move(self, angles):
+
+        if self.headlock == True:
+            return
+
+        print angles.data[0], angles.data[1]
+
+        names = ["HeadYaw", "HeadPitch"]
+        # print angles[0] , angles[1]
+        fractionMaxSpeed = 0.1
+        id = self.motionProxy.post.setAngles(names, angles.data, fractionMaxSpeed)
+        self.motionProxy.wait(id, 0)
+        #
+
+
+
+
+    def headmove(self, angles,speed):
+
+        print angles[0], angles[1]
+        names = ["HeadYaw", "HeadPitch"]
+        # print angles[0] , angles[1]
+        fractionMaxSpeed = speed
+        id = self.motionProxy.post.setAngles(names, angles, fractionMaxSpeed)
+        self.motionProxy.wait(id, 0)
+        #
+
+
+    def search(self):
+
+
+        prevodom = self.headOdom
+
+        self.headmove([-0.8,self.headOdom[1]],0.1)
+        time.sleep(2)
+
+        if self.stop == False :
+            self.headmove([0.8, self.headOdom[1]],0.1)
+            time.sleep(2)
+
+
+        #return to original
+        if self.stop == False:
+            self.headmove(prevodom,0.1)
+
+        self.stop = False
 
 
     def audio_callback(self,msg):
@@ -76,40 +132,19 @@ class NaoBehavior:
         nodetectionCount = 0
        # print  msg.azimuth.data
         while True:
-
             time.sleep(0.8)
             speech = self.memoryProxy.getData(self.memValue, 0)
             voice = self.memoryProxy.getData('SpeechDetected', 0)
-            print voice
             if (voice ==1 ):
                 if speech[1] > 0.1:
                     nodetectionCount =0
-                    print speech
-                    self.speechPub.publish(msg)
+                    self.speechPub.publish(True)
                     return
             else:
                 nodetectionCount +=1
             if nodetectionCount >10:
                 self.asr.pause(True)
                 return
-
-
-
-
-       # msg.azimuth.data = value[1][0]
-      #  msg.elevation.data = value[1][1]
-      #  msg.confidence.data = value[1][2]
-     #   msg.energy.data = value[1][3]
-
-     #   msg.head_pose.position.x = value[2][0]
-      #  msg.head_pose.position.y = value[2][1]
-      #  msg.head_pose.position.z = value[2][2]
-      #  msg.head_pose.orientation.x = value[2][3]
-      #  msg.head_pose.orientation.y = value[2][4]
-      #  msg.head_pose.orientation.z = value[2][5]
-
-    #run speech recognition
-
 
 
 
@@ -148,6 +183,16 @@ class NaoBehavior:
         elif behavior.startswith('move '):
             self.l_behaviors.append(behavior[5:])
             self.l_type.append('move')
+        elif behavior.startswith('nod'):
+            self.l_behaviors.append(behavior)
+            self.l_type.append('nod')
+        elif behavior.startswith('search'):
+            self.search()
+            return
+        elif behavior.startswith('stop'):
+            self.stop = True
+            return
+
         else:
             self.l_behaviors.append(behavior)
             self.l_type.append('behavior')
@@ -157,8 +202,7 @@ class NaoBehavior:
             self.active = True
 
             t1 = threading.Thread(target=self.run)
-            t1.start()
-           # self.run()
+            t1.start()q
             print ('exit')
 
     def run(self):
@@ -190,6 +234,8 @@ class NaoBehavior:
                     self.texttospeach(behavior)
                 elif self.l_type[0] == 'move':
                     self.navigate(float(behavior))
+                elif self.l_type[0] == 'nod':
+                    self.nod()
 
                 elif self.l_type == 'wait':
                     try:
@@ -245,12 +291,12 @@ class NaoBehavior:
 
         self.motionProxy.setBreathEnabled('Legs' , boolv)
         self.motionProxy.setBreathEnabled( 'Arms', boolv)
-       # self.motionProxy.setBreathEnabled('Head',False)
+        self.motionProxy.setBreathEnabled('Head',False)
 
     def wakeup(self):
         # Wake up robot
 
-        self.motionProxy.wakeUp()
+      #  self.motionProxy.wakeUp()
         # Send robot to Pose Init
         self.postureProxy.goToPosture("StandInit", 0.5)
         self.resting = False
@@ -276,6 +322,7 @@ class NaoBehavior:
         self.tts.say(text)
 
     def launchBehavior(self, behaviorName):
+
         ''' Launch and stop a behavior, if possible. '''
         if (self.managerProxy.isBehaviorInstalled(behaviorName)):
             # Check that it is not already running.
@@ -285,9 +332,13 @@ class NaoBehavior:
                 # Launch behavior. This is a blocking call, use post if you do not
                 # want to wait for the behavior to finish.
                 rospy.loginfo ("Running Behavior"+ behaviorName)
+                headodom =  self.motionProxy.getAngles(["HeadYaw", "HeadPitch"], True)
                 id = self.managerProxy.post.runBehavior(behaviorName)
                 # wait till behavior stops running
                 self.managerProxy.wait(id, 0)
+
+                #return head back to original
+                self.headmove(headodom,0.1)
             else:
                 rospy.loginfo("Behavior is already running.")
         else:
@@ -301,6 +352,26 @@ class NaoBehavior:
     def on_shutdown(self):
        # self.asr.unsubscribe("ASR")
         self.rest()
+    def jointstateC(self, data):
+        #keeps our odom up to date
+        self.headOdom[0] = data.position[0]
+        self.headOdom[1] = data.position[1]
+
+    def nod(self):
+        self.headlock = True
+        prevodom = self.headOdom
+        odom = self.headOdom
+        odom[1] -= 0.5
+        self.headmove(odom,0.08)
+
+        odom[1] += 0.5
+        self.headmove(odom,0.08)
+
+        self.headlock = False
+
+
+
+
 
 
 def check_ros():
