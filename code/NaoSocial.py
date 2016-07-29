@@ -154,7 +154,6 @@ class NaoSocial:
                     self.behaviorpub.publish('stop')
                     self.searching = False
 
-
                 self.calculateMovement(currentFace)
                 #if first time detecting say hello
                 if self.habituation ==0:
@@ -188,9 +187,6 @@ class NaoSocial:
         return self.image
 
     def calculateMovement(self, center):
-        #
-
-
         yaw = self.headOdom[0]
         pitch = self.headOdom[1]
 
@@ -198,7 +194,7 @@ class NaoSocial:
         pitchMultiplier = 0.005
         # if the x of the center is below threshhold we dont want to move as item is in the center
         if abs(center[0] - self.imgCenter[0]) < self.imgThreshold[0]:
-            i =1
+            pass
         # if on the right of image
         elif center[0] > self.imgCenter[0]:
             diff = abs(center[0] - self.imgCenter[0])
@@ -211,9 +207,8 @@ class NaoSocial:
             yaw = yaw + pos
             # pitch
 
-
         if abs(center[1] - self.imgCenter[1]) < self.imgThreshold[1]:
-            print("pc")
+            pass
         elif center[1] > self.imgCenter[1]:
             diff = abs(center[1] - self.imgCenter[1])
             pos = diff * pitchMultiplier
@@ -224,38 +219,9 @@ class NaoSocial:
             pos = diff * pitchMultiplier
             pitch -= pos
 
-       # self.pose(yaw, pitch)
-       # self.headmove([yaw,pitch])
         d = Float32MultiArray()
-        d.data = [yaw,pitch]
+        d.data = [yaw,pitch,0.1]
         self.headpub.publish(d)
-
-
-
-    def pose(self, yaw, pitch):
-        # if  the goal head location is out of range dont move
-        # print(yaw)
-        # print(pitch)
-
-        if yaw < -3.1 or yaw > 3.1:
-            yaw = self.headOdom[0]
-
-        if pitch < -3 or pitch > 3:
-            pitch = self.headOdom[1]
-
-
-
-        angle_goal = naoqi_bridge_msgs.msg.JointAnglesWithSpeedGoal()
-        angle_goal.joint_angles.relative = 0
-        angle_goal.joint_angles.joint_names = ["HeadYaw", "HeadPitch"]
-
-        angle_goal.joint_angles.joint_angles = [yaw, pitch]
-        angle_goal.joint_angles.speed = 0.1
-
-        self.angle_client.send_goal_and_wait(angle_goal)
-        result = self.angle_client.get_result()
-
-
 
     def set_ini_var(self, cv_image):
         # get height and with
@@ -271,7 +237,6 @@ class NaoSocial:
         self.init =1
 
     def run(self):
-
         while  True:
           if self.init ==1:
              img =  self.detectface()

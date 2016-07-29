@@ -36,6 +36,7 @@ class NaoBehavior:
         self.headOdom = [0,0]
         self.stop = False
         self.headlock =False
+        self.enableAutoRotate = True
 
 
 
@@ -66,47 +67,42 @@ class NaoBehavior:
         rospy.Subscriber("/nao_behavior/head", Float32MultiArray, self.move)
         self.breath(True)
 
-    def move(self, angles):
-
+    def move(self, data):
         if self.headlock == True:
             return
+        self.headlock ==  True
 
-        print angles.data[0], angles.data[1]
+        # we want to tilt the body if the position is too far to the endge
+        if self.enableAutoRotate:
+            if data.data[0] > 2:
+                self.rotate(0.1)
+            elif data.data[0] < -2:
+                self.rotate(-0.1)
+            self.headlock == false
+            return
 
-        names = ["HeadYaw", "HeadPitch"]
-        # print angles[0] , angles[1]
-        fractionMaxSpeed = 0.1
-        id = self.motionProxy.post.setAngles(names, angles.data, fractionMaxSpeed)
-        self.motionProxy.wait(id, 0)
-        #
-
-
+        Id = self.motionProxy.post.setAngles(["HeadYaw", "HeadPitch"], [data.data[0],data.data[1]], data.data[2])
+        self.motionProxy.wait(Id, 0)
+        self.headlock == False
 
 
     def headmove(self, angles,speed):
-
-        print angles[0], angles[1]
-        names = ["HeadYaw", "HeadPitch"]
-        # print angles[0] , angles[1]
-        fractionMaxSpeed = speed
-        id = self.motionProxy.post.setAngles(names, angles, fractionMaxSpeed)
-        self.motionProxy.wait(id, 0)
-        #
+        if self.headlock == True:
+            return
+        self.headlock == True
+        Id = self.motionProxy.post.setAngles(["HeadYaw", "HeadPitch"], angles, speed)
+        self.motionProxy.wait(Id, 0)
+        self.headlock == False
 
 
     def search(self):
-
-
         prevodom = self.headOdom
-
         self.headmove([-0.8,self.headOdom[1]],0.1)
         time.sleep(2)
 
         if self.stop == False :
             self.headmove([0.8, self.headOdom[1]],0.1)
             time.sleep(2)
-
-
         #return to original
         if self.stop == False:
             self.headmove(prevodom,0.1)
@@ -153,6 +149,9 @@ class NaoBehavior:
         self.checkawake()
 
         self.motionProxy.moveTo(x,0,0)
+    def rotate(self,z):
+        self.checkawake()
+        self.motionProxy.moveTo(0, 0, z)
 
 
 
@@ -192,6 +191,9 @@ class NaoBehavior:
         elif behavior.startswith('stop'):
             self.stop = True
             return
+        elif behavior.startswith('rotate'):
+            self.l_behaviors.append(behavior[7:])
+            self.l_type.append('rotate')
 
         else:
             self.l_behaviors.append(behavior)
@@ -202,8 +204,10 @@ class NaoBehavior:
             self.active = True
 
             t1 = threading.Thread(target=self.run)
-            t1.start()q
+            t1.start()
             print ('exit')
+
+
 
     def run(self):
         while True:
@@ -234,13 +238,14 @@ class NaoBehavior:
                     self.texttospeach(behavior)
                 elif self.l_type[0] == 'move':
                     self.navigate(float(behavior))
+                elif self.l_type[0] == 'rotate':
+                    self.rotate(float(behavior))
                 elif self.l_type[0] == 'nod':
                     self.nod()
 
                 elif self.l_type == 'wait':
                     try:
                         rospy.loginfo('waiting')
-
                         time.sleep(int(behavior))
                     except:
                         rospy.loginfo('incorect time must be wait <seconds> replace <>')
@@ -288,21 +293,13 @@ class NaoBehavior:
         else:
             self.breathEnabled = False
 
-
         self.motionProxy.setBreathEnabled('Legs' , boolv)
         self.motionProxy.setBreathEnabled( 'Arms', boolv)
         self.motionProxy.setBreathEnabled('Head',False)
 
     def wakeup(self):
-        # Wake up robot
-
-      #  self.motionProxy.wakeUp()
-        # Send robot to Pose Init
         self.postureProxy.goToPosture("StandInit", 0.5)
         self.resting = False
-
-
-        #time.sleep(4.0)
 
     def checkawake(self):
         self.managerProxy.stopAllBehaviors()
@@ -332,10 +329,12 @@ class NaoBehavior:
                 # Launch behavior. This is a blocking call, use post if you do not
                 # want to wait for the behavior to finish.
                 rospy.loginfo ("Running Behavior"+ behaviorName)
+                self.headlock = True
                 headodom =  self.motionProxy.getAngles(["HeadYaw", "HeadPitch"], True)
-                id = self.managerProxy.post.runBehavior(behaviorName)
+                Id = self.managerProxy.post.runBehavior(behaviorName)
+                self.headlock = False
                 # wait till behavior stops running
-                self.managerProxy.wait(id, 0)
+                self.managerProxy.wait(Id, 0)
 
                 #return head back to original
                 self.headmove(headodom,0.1)
@@ -350,7 +349,7 @@ class NaoBehavior:
             rospy.loginfo(x)
 
     def on_shutdown(self):
-       # self.asr.unsubscribe("ASR")
+        self.asr.unsubscribe("ASR")
         self.rest()
     def jointstateC(self, data):
         #keeps our odom up to date
@@ -358,7 +357,7 @@ class NaoBehavior:
         self.headOdom[1] = data.position[1]
 
     def nod(self):
-        self.headlock = True
+
         prevodom = self.headOdom
         odom = self.headOdom
         odom[1] -= 0.5
@@ -366,8 +365,6 @@ class NaoBehavior:
 
         odom[1] += 0.5
         self.headmove(odom,0.08)
-
-        self.headlock = False
 
 
 
@@ -405,7 +402,7 @@ if __name__ == "__main__":
 
     app = NaoBehavior(args.ip, args.port)
 
-    #time.sleep(2)
+
 
     rospy.spin()
 

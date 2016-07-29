@@ -1,14 +1,11 @@
 
-
-
-
 Everything launched from the code folder
 
 Behaviors.py
 when run robot will stand up and  enable all joints.. on exit will sit down and disable joints
-python behaviors.py 10.18.12.56 (Robot IP)
+python behaviors.py --ip 10.18.12.56 (Robot IP)
 
-rostopic pub -1 /nao_behavior/run std_msgs/String -- 'System/animations/Stand/Emotions/Neutral/Hello_1'
+publishing to /nao_behavior/add of type String
 Behaviors can be queued
 you can replace the string with
 wakeup
@@ -17,11 +14,25 @@ wait <seconds>
 say
 say animated
 help  provides list of system behaviors
+search
+move (moves forward and backwards)
+rotate ( turn the body)
 anyother string is treated as a system behavior
 
-if you say after a behavior a move, both will be executed at the same time
-if you want the robot to move and then say, put a wait in between the calls
-This doesnt apply to say animated, that will always run on its own
+if you say after a behavior both will be executed at the same time
+if you want the robot to run the say after completing the behavior put a wait in between the calls
+This doesnt apply to say animated, that will always run on its own due to the auto animation
+Example rostopic pub -1 /nao_behavior/add std_msgs/String -- 'System/animations/Stand/Emotions/Neutral/Hello_1'
+
+publishing to /nao_behavior/head of type Float32MultiArray
+Moves the nao`s head 
+[0] yaw
+[1] pitch
+[2] speed
+
+
+
+
 
 
 RVIZ Display
