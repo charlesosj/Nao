@@ -34,13 +34,6 @@
     <arg name="version"       value="V40" />
   </include>
 
-   <node 
-    pkg="nao_audio" 
-    type="nao_audio.py" 
-    name="nao_audio" 
-    args="--pip=$(arg nao_ip) --pport=$(arg nao_port)"
-    output="screen"
-  />
 
 
  <!-- enable  walker -->
