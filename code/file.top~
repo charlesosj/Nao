@@ -1,0 +1,70 @@
+topic: ~introduction ()
+language:enu
+
+#add include
+include:lexicon_enu.top
+concept:(how) ["how are you" howdy "what's up" "how do you feel"]
+
+
+
+
+
+# If User asks how the robot feels, it starts a random animation being tagged "myself",
+# answers and go to the label %howAreYou
+u:(~how) ^startTag(myself) I'm fine, thank you. And you, ^gotoRandom(prop)
+
+proposal: %prop ^startTag(show) how are you today?
+    u1:(~im_good) I'm glad you are fine! ^gotoReactivate(favoriteColor)
+    u1:(~i_dont_feel_good) ^gotoReactivate(why) 
+
+proposal: %prop ~(what_is_your_name)
+	u1:(_*)  ~(hello) $1  $name=$1
+
+proposal: %prop are you here for the computer science open day?
+	u1: (~yes) cool ^gotoRandom(prop)
+	u1: (~no) ^gotoReactivate(why)
+
+proposal: %prop enjoying your day so far ?
+	u1: (~yes) Good to hear
+	u1: (~no) ^gotoReactivate(why)
+
+proposal: %why oh why not
+	u1: (*) ~i_am sorry to hear ^gotoRandom(prop)
+ 
+
+propsal: %prop would you like to hear a joke
+	u1: (~yes) ^gotoReactivate(knock1)
+	u1: (~no)  I promise you will like it, i wil say it anyway ^gotoReactivate(knock)
+
+
+proposal %knock knock knock
+	u1: (who's there)  ^gotoRandom(joke)
+	
+
+propsal %joke Yaa
+	u1: (ya who) Not Yahoo i prefer Google
+
+propsal %joke tank
+	u1: (tank who) You're welcome
+
+u:(what is my name) ^first["Your name is %name" "i don't know, what is your name"]
+	u1:(_*)  ~(hello) $1  $name=$1
+
+
+
+# the robot asks User for his prefered color between blue and red.
+# this illustrate variables stored in $1 using '_' character.
+proposal: %favoriteColor And what is your favorite color between Blue and Red ?
+    u1:(violet) Violet is my prefered color too ! ^nextProposal
+    u1:(_[blue red]) $1 is a very nice color and my prefered is violet.# ^gotoReactivate(playAGame)
+    u1:(_[green yellow pink orange purple white black]) $1 is a nice color. ^sameProposal
+
+# Being polite, the robot always answers accordingly to thankfull sentences.
+u:(~thank_you) You're welcome
+
+
+# On any proposal if user asks to repeat, say again the same proposal.
+u:(~repeat_it) I'll repeat for you. ^sameProposal
+
+
+
