@@ -65,9 +65,9 @@ class NaoSocial:
         self.stiffness_client = actionlib.SimpleActionClient("joint_stiffness_trajectory", naoqi_bridge_msgs.msg.JointTrajectoryAction)
         self.angle_client = actionlib.SimpleActionClient("joint_angles_action",naoqi_bridge_msgs.msg.JointAnglesWithSpeedAction)
         rospy.loginfo("Waiting for joint_trajectory and joint_stiffness servers...")
-        self.client.wait_for_server()
-        self.stiffness_client.wait_for_server()
-        self.angle_client.wait_for_server()
+        #self.client.wait_for_server()
+        #self.stiffness_client.wait_for_server()
+        #self.angle_client.wait_for_server()
         rospy.loginfo("Done.")
 
 
@@ -202,7 +202,7 @@ class NaoSocial:
                 self.image =numpy.zeros((self.imgH,self.imgW,3), numpy.uint8)
                 self.init =1
             #detect faces in the image
-            #outimg = self.detectface( cv_image )
+            outimg = self.detectface( cv_image )
             self.image = cv_image
            # cv2.imshow("Image window", self.image)
 

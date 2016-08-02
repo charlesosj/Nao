@@ -8,8 +8,11 @@ import message_filters
 import roslib
 import actionlib
 import naoqi_bridge_msgs.msg
-
+import roslib; roslib.load_manifest('visualization_marker_tutorials')
+from visualization_msgs.msg import Marker
+from visualization_msgs.msg import MarkerArray
 import almath
+import math
 import rospy
 from naoqi import ALProxy
 from std_msgs.msg import String, Bool ,Float32MultiArray
@@ -40,6 +43,7 @@ class NaoBehavior:
         self.track = False
         self.trackingPaused = False
         self.diaglogenabled= False
+        self.currentTargetid = 0
 
 
 
@@ -53,6 +57,12 @@ class NaoBehavior:
         self.postureProxy = ALProxy("ALRobotPosture", robotIP, port)
         self.asr = ALProxy("ALSpeechRecognition", robotIP, port)
         self.tracker = ALProxy("ALTracker", robotIP, port)
+        self.faceProxy = ALProxy("ALFaceDetection", robotIP, port)
+        self.faceProxy.subscribe("Test_Face", 500, 0.0 )
+        self.peopleProxy = ALProxy("ALFaceDetection", robotIP, port)
+
+
+
         self.dialog_p = ALProxy('ALDialog', robotIP, port)
         self.topf_path = '/home/nao/top/mytopic_enu.top'
         self.topf_path = self.topf_path.decode('utf-8')
@@ -62,7 +72,7 @@ class NaoBehavior:
         self.autonomousMovesProxy.setExpressiveListeningEnabled(False)
         self.memValue = "WordRecognized"
         self.tts = ALProxy("ALTextToSpeech", robotIP, port)
-        self.tts.setParameter("speed", 100)
+        self.tts.setParameter("speed", 90)
 
         #topics			  /nao_behavior/enable_Tracking
         rospy.Subscriber("/nao_behavior/add", String, self.run_callback)
@@ -77,12 +87,76 @@ class NaoBehavior:
      #   rospy.Subscriber("/nao_audio/audio_source_localization", AudioSourceLocalization, self.audio_callback)
         self.speechPub = rospy.Publisher('/nao_behavior/speech_detection', Bool, queue_size=1)
         self.trackingPub = rospy.Publisher('/nao_behavior/tracking', Bool, queue_size=1)
+        self.visualPub = publisher = rospy.Publisher('visual', MarkerArray, queue_size =5)
 
         #speech ini
         rospy.Subscriber("/nao_behavior/head", Float32MultiArray, self.move)
 
         self.breath(True)
-        
+        self.start()
+
+    def visualPeople(self):
+
+        memValue = 'PeoplePerception/PeopleDetected' 
+        while  not rospy.is_shutdown():
+            markerArray = MarkerArray()
+            try:
+                currentTarget = self.tracker.getTargetPosition(0)
+                closestid = 999
+                closestx = 99999
+
+                PeopleDetected = self.memoryProxy.getData('PeoplePerception/PeopleDetected', 0)
+                # for each person
+                people = PeopleDetected[1]
+                i = 0
+
+                for person in people:
+                    # get their location using their id
+
+                    location = self.memoryProxy.getData('PeoplePerception/Person/'+str(person[0])+'/PositionInTorsoFrame', 0)
+                   # print location
+                    marker = Marker()
+                    marker.header.frame_id = "torso"
+                    marker.type = marker.SPHERE
+                    marker.action = marker.ADD
+                    marker.scale.x = 0.1
+                    marker.scale.y = 0.1
+                    marker.scale.z = 0.1
+
+                    marker.color.a = 1.0
+                    marker.color.r = 1.0
+                    marker.color.g = 1.0
+                    marker.color.b = 0.0
+
+                    marker.pose.orientation.w = 1.0
+                    marker.pose.position.x = location[0]
+                    marker.pose.position.y = location[1] 
+                    marker.pose.position.z = location[2]
+                    marker.lifetime.secs = 1
+                    marker.text = str(person[0])
+                    marker.id = person[0]
+                    markerArray.markers.append(marker)
+
+                    #Find the closest person to the curent target
+                    distance = abs(currentTarget[0] - location[0])
+                    if distance < closestx:
+                        closestx = distance
+                        closestid =i
+                    i +=1
+                #change the colour of the closest id befor publisning
+                markerArray.markers[closestid].color.r = 1.0
+                markerArray.markers[closestid].color.g = 0
+                markerArray.markers[closestid].color.b = 0
+                self.currentTargetid = people[closestid][0]
+            except Exception, e:
+                pass
+
+
+            
+            self.visualPub.publish(markerArray)
+    def unregisterTarget():
+        pass
+   
     def start(self):
     	self.starttracker('sds')
 
@@ -119,25 +193,31 @@ class NaoBehavior:
             return
         self.track = True
         #Add target to track.
-        targetName = "Face"
+        targetName = "People"
         faceWidth = 0.1
         #self.tracker.setEffector('Head')
         self.tracker.registerTarget(targetName, 0.1)
        # self.tracker.toggleSearch(True)
         #start tracking
         self.tracker.track(targetName)
-        try:
-            while self.track == True: 
-                p = Bool()
-                p.data  =not self.tracker.isTargetLost()     
-                self.trackingPub.publish(p)
-                if self.track ==False:
-                    break
+        #start rviz visualization
+        self.visualPeople()
+        while self.track == True and  not rospy.is_shutdown():
+            
+            p = Bool()
+            p.data  =not self.tracker.isTargetLost()  
 
-                time.sleep(0.5)
-
-        except KeyboardInterrupt:
+            if  p.data == True:
                 pass
+              #   t1 = threading.Thread(target=self.visual)
+               #  t1.start()
+
+            self.trackingPub.publish(p)
+            if self.track ==False:
+                break
+
+            #time.sleep(0.5)
+
         self.tracker.stopTracker()
         self.tracker.unregisterAllTargets()
 
@@ -461,6 +541,8 @@ class NaoBehavior:
     def on_shutdown(self):
         self.track = False
         try:
+            self.faceProxy.unsubscribe("Test_Face")
+
             self.asr.unsubscribe("ASR")
         except Exception, e:
             pass

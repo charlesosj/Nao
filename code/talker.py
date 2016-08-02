@@ -14,8 +14,8 @@ if __name__ == '__main__':
     str = 'System/animations/Stand/Emotions/Neutral/Hello_1'
     pub.publish(str)
 
-    str = 'wait 0.5'
-    pub.publish(str)
+  #  str = 'wait 0.5'
+    #pub.publish(str)
 
     str = 'say hello i am a robot how are you doing'
     pub.publish(str)
@@ -24,10 +24,10 @@ if __name__ == '__main__':
     pub.publish(str)
 
     str = 'move 0.2'
-    pub.publish(str)
+    #pub.publish(str)
 
 
     str = 'rest'
-    pub.publish(str)
+   # pub.publish(str)
 
 

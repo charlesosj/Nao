@@ -64,7 +64,7 @@ class NaoSocial:
             time.sleep(0.5)
 
 
-            print self.habituation ,self.undetectedcount
+           # print self.habituation ,self.undetectedcount
             if self.habituation == 0 and self.detected == True:
                 self.undetectedcount = 0
                 self.habituation +1
