@@ -20,12 +20,15 @@ import argparse
 import threading
 from nao_interaction_msgs.msg import (AudioSourceLocalization)
 from sensor_msgs.msg import JointState
+from random import randint
+
 class NaoBehavior:
     def __init__(self, robotIP ,port):
 
         # behavior lists
         self.l_type = []
         self.l_behaviors = []
+        self.Peoplelist = []
 
         # auto
         self.breathEnabled = False
@@ -44,6 +47,8 @@ class NaoBehavior:
         self.trackingPaused = False
         self.diaglogenabled= False
         self.currentTargetid = 0
+        self.currentTarget = [0,0,0]
+
 
 
 
@@ -87,23 +92,30 @@ class NaoBehavior:
      #   rospy.Subscriber("/nao_audio/audio_source_localization", AudioSourceLocalization, self.audio_callback)
         self.speechPub = rospy.Publisher('/nao_behavior/speech_detection', Bool, queue_size=1)
         self.trackingPub = rospy.Publisher('/nao_behavior/tracking', Bool, queue_size=1)
+        self.startTrackPub = rospy.Publisher('/nao_behavior/enable_Tracking', String,latch=True ,queue_size=5)
         self.visualPub = publisher = rospy.Publisher('visual', MarkerArray, queue_size =5)
+
 
         #speech ini
         rospy.Subscriber("/nao_behavior/head", Float32MultiArray, self.move)
 
         self.breath(True)
-        self.start()
+      #  self.start()
 
     def visualPeople(self):
 
+
         memValue = 'PeoplePerception/PeopleDetected' 
-        while  not rospy.is_shutdown():
+        self.Peoplelist = []
+
+        while self.track == True and  not rospy.is_shutdown():
             markerArray = MarkerArray()
             try:
-                currentTarget = self.tracker.getTargetPosition(0)
+                self.currentTarget = self.tracker.getTargetPosition()
                 closestid = 999
                 closestx = 99999
+
+                #get the target currently being tracked
 
                 PeopleDetected = self.memoryProxy.getData('PeoplePerception/PeopleDetected', 0)
                 # for each person
@@ -111,9 +123,12 @@ class NaoBehavior:
                 i = 0
 
                 for person in people:
-                    # get their location using their id
-
+                    ID = person[0]
+                  # get their location using their id
                     location = self.memoryProxy.getData('PeoplePerception/Person/'+str(person[0])+'/PositionInTorsoFrame', 0)
+                    self.Peoplelist.append(location)
+
+
                    # print location
                     marker = Marker()
                     marker.header.frame_id = "torso"
@@ -133,12 +148,12 @@ class NaoBehavior:
                     marker.pose.position.y = location[1] 
                     marker.pose.position.z = location[2]
                     marker.lifetime.secs = 1
-                    marker.text = str(person[0])
-                    marker.id = person[0]
+                    marker.text = str(ID)
+                    marker.id = ID
                     markerArray.markers.append(marker)
 
                     #Find the closest person to the curent target
-                    distance = abs(currentTarget[0] - location[0])
+                    distance = abs(self.currentTarget[0] - location[0])
                     if distance < closestx:
                         closestx = distance
                         closestid =i
@@ -147,15 +162,37 @@ class NaoBehavior:
                 markerArray.markers[closestid].color.r = 1.0
                 markerArray.markers[closestid].color.g = 0
                 markerArray.markers[closestid].color.b = 0
+
                 self.currentTargetid = people[closestid][0]
+                # i want the current target to be put at the end of the list
+                temp = self.Peoplelist[closestid]
+                self.Peoplelist.pop(closestid)
+                self.Peoplelist.append(temp)
+                self.currentTarget =temp
             except Exception, e:
                 pass
 
 
             
             self.visualPub.publish(markerArray)
-    def unregisterTarget():
-        pass
+    def changetarget(self):
+        #get current target
+      #  self.currentTarget = self.tracker.getTargetPosition(0)
+        val = abs(self.currentTarget[0] -self.Peoplelist[-1][0] )
+
+        print val
+
+        # if the current target isnt the last item in the list switch to it
+        if val > 0.5:
+            #changing to different target
+            print'changing to next person'
+            self.tracker.lookAt(self.Peoplelist[0],0,0.1,False)
+            self.currentTarget
+        else:
+            print'i will look away'
+            self.lookaway()
+
+ 
    
     def start(self):
     	self.starttracker('sds')
@@ -193,33 +230,28 @@ class NaoBehavior:
             return
         self.track = True
         #Add target to track.
-        targetName = "People"
-        faceWidth = 0.1
+        
+      
         #self.tracker.setEffector('Head')
-        self.tracker.registerTarget(targetName, 0.1)
+        self.tracker.registerTarget("People", 0.1)
        # self.tracker.toggleSearch(True)
         #start tracking
-        self.tracker.track(targetName)
+        self.tracker.track("People")
         #start rviz visualization
-        self.visualPeople()
+    
+
+        #start face visualization
+        t1 = threading.Thread(target =self.visualPeople)
+        t1.start()
         while self.track == True and  not rospy.is_shutdown():
-            
-            p = Bool()
-            p.data  =not self.tracker.isTargetLost()  
-
-            if  p.data == True:
-                pass
-              #   t1 = threading.Thread(target=self.visual)
-               #  t1.start()
-
+        #tell everyone we have detected a face    
+            p  =not self.tracker.isTargetLost()  
             self.trackingPub.publish(p)
             if self.track ==False:
                 break
-
-            #time.sleep(0.5)
-
         self.tracker.stopTracker()
         self.tracker.unregisterAllTargets()
+        self.trackingPub.publish(False)
 
     def stoptracker(self,data):
         self.track = false
@@ -244,6 +276,7 @@ class NaoBehavior:
 
 
     def headmove(self, angles,speed):
+        #stop tracker if its running
         if self.headlock == True:
             return
         self.headlock == True
@@ -354,6 +387,10 @@ class NaoBehavior:
         elif behavior.startswith('lookaway'):
             self.l_behaviors.append(behavior[9:])
             self.l_type.append('lookaway')
+        elif behavior.startswith('changetarget'):
+             t1 = threading.Thread(target=self.changetarget)
+             t1.start()
+           
 
         else:
             self.l_behaviors.append(behavior)
@@ -365,7 +402,7 @@ class NaoBehavior:
 
             t1 = threading.Thread(target=self.run)
             t1.start()
-            print ('exit')
+          
     def run(self):
         while True:
             # if we have items in the queue
@@ -407,7 +444,7 @@ class NaoBehavior:
                 elif self.l_type[0] == 'nod':
                     self.nod()
                 elif self.l_type[0] == 'lookaway':
-                    self.lookaway(behavior)
+                    self.lookaway()
 
                 elif self.l_type == 'wait':
                     try:
@@ -442,22 +479,33 @@ class NaoBehavior:
                 elif self.breathEnabled == False:
                     self.idlecount += 1
 
-    def lookaway(self, direction):
+    def lookaway(self):
+        #check if tracking is raunning, pause it and continue after
+
+
+        #random direction
+        r = randint(0,2)
+        
+        if r == 1:
+            direction ='left'
+        else:
+            direction = 'right'
+
         distance = 0.3
         curodom = self.headOdom
         print "looking" + direction
         if direction == 'left':
             angle = [self.headOdom[0] - distance,curodom[1]]
-            d = self.headmove(angle,0.08)
+            d = self.headmove(angle,0.07)
         elif direction == 'right':
             angle = [self.headOdom[0] + distance,curodom[1]]
-            d = self.headmove(angle,0.08)
+            d = self.headmove(angle,0.07)
 
         #wait for a bit then move back to original
-        time.sleep(1)
+        time.sleep(0.5)
 
         print 'moving back'
-        self.headmove(curodom,0.08)
+        self.headmove(curodom,0.07)
 
 
     def rest(self):
@@ -559,7 +607,7 @@ class NaoBehavior:
         prevodom = self.headOdom
         odom = self.headOdom
         odom[1] += 0.5
-        self.headmove(odom,0.08)
+        self.headmove(odom,0.0)
 
         odom[1] -= 0.5
         self.headmove(odom,0.08)
@@ -602,9 +650,3 @@ if __name__ == "__main__":
     # what to do on shutdown
     rospy.on_shutdown(app.on_shutdown)
 
-
-    # commands
-    # rostopic pub -1 /nao_behavior/run_behavior std_msgs/String -- 'System/animations/Stand/Emotions/Neutral/Hello_1'
-    # rostopic pub -1 /nao_behavior/get_behaviors std_msgs/String -- 'hi'
-
-#

@@ -61,29 +61,27 @@ class NaoSocial:
     def run(self):
         print 'started'
         while True :
-            time.sleep(0.5)
+            
 
 
-           # print self.habituation ,self.undetectedcount
+            print self.habituation ,self.undetectedcount
             if self.habituation == 0 and self.detected == True:
                 self.undetectedcount = 0
                 self.habituation +1
                 self.hello()
                 #enable diag
                 self.enableDiagpub.publish("sdsd")
-               # time.sleep(3)
 
             if self.detected == True:
                 # if we have a person detected
                 self.habituation += 1
                 self.undetectedcount =0
-                if self.habituation >3 and (self.speechCount % 15) == 0 :
-                     self.nod()
-                #if we have been staring at a person too long we want to look away
+                # if we have been looking at a person for a while
+                #unregister them
                 if self.habituation >25:
-                  #  self.lookaway()
-                    #reset habituation
-                    self.habituation =1
+					self.behaviorpub.publish('changetarget')
+					#put habituationto 1 so we dont wave at the next person
+					self.habituation =1
             else:
                 self.undetectedcount +=1
 
@@ -100,11 +98,7 @@ class NaoSocial:
                 print 'searching stopped'
 
 
-
-
-
-
-        #if we have lost the person after 5 seconds reset habituation
+            #if we havevent detected a person in a while exit and reset
             if self.undetectedcount >100:
                 print 'reset'
 
@@ -115,10 +109,9 @@ class NaoSocial:
                 self.disableDiagpub.publish("msg")
                 self.ini = False
                 return    
-
+            time.sleep(0.5)
     def trackingC(self, data):
         self.detected = data.data
-        time.sleep(0.2)
 
         if self.ini == False and data.data == True:
             self.ini =True
@@ -126,35 +119,24 @@ class NaoSocial:
             t1.start()
             #self.run()
 
-         
 
-       
-    
-
-    def nod(self):
-        pass
-    def lookaway(self):
-        #randomly pick left or right
-        r = randint(0,2)
-        direction = 'right'
-        if r == 1:
-            direction ='left'
-        self.behaviorpub.publish('lookaway ' +direction)
-        #wait a couple seconds for this to finish
-        time.sleep(1)
         
 
     def hello(self):
         str = 'System/animations/Stand/Gestures/Hey_1'
         self.behaviorpub.publish(str)
         str = 'say Hello '
-        self.behaviorpub.publish(str)
+        #self.behaviorpub.publish(str)
          
 
     def speechCallback(self,msg):
         self.speechCount += 1
     def on_shutdown(self):
-        pass
+		self.disableDiagpub.publish("msg")
+		self.disabletrackingPub.publish("sdsd")
+
+
+
 
 
 
