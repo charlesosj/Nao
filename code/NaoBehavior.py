@@ -481,6 +481,8 @@ class NaoBehavior:
 
     def lookaway(self):
         #check if tracking is raunning, pause it and continue after
+        self.track == False
+        time.sleep(0.5)
 
 
         #random direction
@@ -491,7 +493,7 @@ class NaoBehavior:
         else:
             direction = 'right'
 
-        distance = 0.3
+        distance = 0.4
         curodom = self.headOdom
         print "looking" + direction
         if direction == 'left':
@@ -502,10 +504,15 @@ class NaoBehavior:
             d = self.headmove(angle,0.07)
 
         #wait for a bit then move back to original
-        time.sleep(0.5)
+        time.sleep(1)
 
         print 'moving back'
-        self.headmove(curodom,0.07)
+        #self.headmove(curodom,0.07)
+
+        #start tracking again
+
+        t1 = threading.Thread(target=self.start)
+        t1.start()
 
 
     def rest(self):
