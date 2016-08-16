@@ -60,10 +60,8 @@ class NaoSocial:
 
     def run(self):
         print 'started'
-        while True :
-            
-
-
+        while True and not rospy.is_shutdown():
+           
             print self.habituation ,self.undetectedcount
             if self.habituation == 0 and self.detected == True:
                 self.undetectedcount = 0
@@ -89,6 +87,9 @@ class NaoSocial:
             if self.detected == False  and self.searching == False and (self.undetectedcount % 15) == 0:
             	self.habituation =0
                 self.searching == True
+                #disable dialogue
+
+                self.disableDiagpub.publish("sdsd")
                 self.behaviorpub.publish('search')
                 print "searching"
             #if we are searching and we find someone stop searching
@@ -124,7 +125,7 @@ class NaoSocial:
 
     def hello(self):
         str = 'System/animations/Stand/Gestures/Hey_1'
-        self.behaviorpub.publish(str)
+        #self.behaviorpub.publish(str)
         str = 'say Hello '
         #self.behaviorpub.publish(str)
          
