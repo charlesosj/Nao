@@ -33,10 +33,14 @@ class Nao:
         self.navigationProxy = ALProxy("ALNavigation", robotIP, port)
         self.postureProxy = ALProxy("ALRobotPosture", robotIP, port)
         self.asr = ALProxy("ALSpeechRecognition", robotIP, port)
-        self.tracker = ALProxy("ALTracker", robotIP, port)
-        self.peopleProxy = ALProxy("ALFaceDetection", robotIP, port)
+        self.trackerProxy= ALProxy("ALTracker", robotIP, port)
+        self.peopleProxy = ALProxy("ALPeoplePerception", robotIP, port)
         self.autonomousMovesProxy = ALProxy("ALAutonomousMoves", robotIP, port)
         self.autonomousMovesProxy.setExpressiveListeningEnabled(False)
+        self.dialog_p = ALProxy('ALDialog', robotIP, port)
+        self.tts = ALProxy("ALTextToSpeech", robotIP, port)
+        self.tts.setParameter("speed", 90)
+
 
         self.peopleID = []
         self.peopleLocation =[]
@@ -44,48 +48,87 @@ class Nao:
         self.behaviors = [ ]
 
         #publishers
-        self.trackingPub = rospy.Publisher('/nao_behavior/tracking',
-Bool, queue_size=1)
-        self.startTrackPub =
-rospy.Publisher('/nao_behavior/enable_Tracking', String, latch=True,
-queue_size=5)
+        self.trackingPub = rospy.Publisher('/nao_behavior/tracking',Bool, queue_size=1)
+        self.startTrackPub =rospy.Publisher('/nao_behavior/enable_Tracking', String, latch=True,queue_size=5)
         self.visualPub = rospy.Publisher('visual', MarkerArray, queue_size=5)
 
                 # topics
-        rospy.Subscriber("/nao_behavior/add", String, self.run_callback)
-        rospy.Subscriber("/nao_behavior/enable_Tracking", String,
-self.trackerCallback)
-        rospy.Subscriber("/nao_behavior/disable_Tracking", String,
-self.stoptracker)
+        #rospy.Subscriber("/nao_behavior/add", String, self.run_callback)
+        rospy.Subscriber("/nao_behavior/enable_Tracking", String,self.tracker_callback)
+        rospy.Subscriber("/nao_behavior/disable_Tracking", String,self.stop_tracker)
         rospy.Subscriber("/nao_behavior/enable_Diag", String, self.startDialog)
         rospy.Subscriber("/nao_behavior/disable_Diag", String, self.resetDialog)
-
+        rospy.Subscriber("/nao_behavior/add/blocking", String,self.blocking_callback)
+        rospy.Subscriber("/nao_behavior/add/nonblocking", String,self.nonblocking_callback)
 
         self.dialogLoaded = False
         self.trackerEnabled = False
-        s
         self.resting = False
         self.stop = False
         self.active =False
+       
+        Thread(target =self.start_PeopleDetectection).start()
+        self.breath()
+      #  self.tracker()
 
-    def run_callback(self, data):
-
-        # add to queue
+    def blocking_callback (self,data):
         behavior = data.data
         if behavior == 'wakeup':
-            self.behaviors.append(["wakeup",behavior])
+            self.wakeup()
         elif behavior == 'rest':
-            self.behaviors.append(["rest", behavior])
+            self.rest()
         elif behavior == "help":
             self.getBehaviors()
         elif behavior.startswith('say '):
-            self.behaviors.append(["say", behavior[4:]])
-        elif behavior.startswith('wait'):
-            self.behaviors.append(["wait", behavior[5:]])
+            print 'saying'+behavior[4:]
+            self.tts.say(behavior[4:])
         elif behavior.startswith('sayanimated'):
-            self.behaviors.append(["sayanimated", behavior[11:]])
+            self.checkawake()
+            # set the local configuration
+            configuration = {"bodyLanguageMode": "contextual"}
+            # say the text with the local configuration
+            self.animatedSpeechProxy.say(behavior[11:], configuration)
+       
         elif behavior.startswith('move '):
-            self.behaviors.append(["move", behavior[5:]])
+            self.checkawake()
+            self.motionProxy.moveTo(float(behavior[5:]), 0, 0)          
+        elif behavior.startswith('search'):
+            self.search()
+            return
+        elif behavior.startswith('stop'):
+            self.stop = True
+            return
+        elif behavior.startswith('lookaway'):
+            pass
+        elif behavior.startswith('changetarget'):
+             Thread(target =self.changetarget).start()
+        else:
+            Thread(target =self.launchBehavior, args =(behavior,False)).start()
+            #self.launchBehavior(behavior,False)
+
+
+    def  nonblocking_callback(self,data):
+        behavior = data.data
+        if behavior == 'wakeup':
+            self.wakeup()
+        elif behavior == 'rest':
+            self.rest()
+        elif behavior == "help":
+            self.getBehaviors()
+        elif behavior.startswith('say '):
+            print 'saying'+behavior[4:]
+            self.tts.post.say(behavior[4:])
+        elif behavior.startswith('sayanimated'):
+            self.checkawake()
+            # set the local configuration
+            configuration = {"bodyLanguageMode": "contextual"}
+            # say the text with the local configuration
+            self.animatedSpeechProxy.post.say(behavior[11:], configuration)
+       
+        elif behavior.startswith('move '):
+            self.checkawake()
+            self.motionProxy.post.moveTo(float(behavior[5:]), 0, 0)   
+       
         elif behavior.startswith('search'):
             self.search()
             return
@@ -95,75 +138,37 @@ self.stoptracker)
         elif behavior.startswith('lookaway'):
             self.behaviors.append(["lookaway", behavior[9:]])
         elif behavior.startswith('changetarget'):
-            t1 = threading.Thread(target=self.changetarget)
-            t1.start()
+            Thread(target =self.changetarget).start()
         else:
-            self.behaviors.append(["behavior", behavior[9:]])
-        # start processing after first call
-        if not self.active:
-            self.active = True
-            Thread(target=self.run).start()
-    def run(self):
-        while not rospy.is_shutdown():
-            # if we have items in the queue
-            if len(self.behaviors) > 0:
-                if self.track:
-                    print 'Pausing Tracking'
-                    self.trackingPaused = True
-                idlecount = 0
-                behavior = self.behaviors[0]
-                if behavior[0] == 'behavior':
-                    # if the next behavior is a say
-                    # say and run the behavior at the same time
-                    try:
-                        if self.behaviors[1][0] == 'say':
-                            Thread(target=self.run
-,args=(self.behaviors[1][1],)).start()
-                            del self.behaviors[1]
-                    except:
-                        pass
-                    self.launchBehavior(behavior[1])
-                elif behavior[0] == 'rest':
-                    self.rest()
-                elif behavior[0]  == 'wakeup':
-                    self.wakeup()
-                elif behavior[0]  == 'say':
-                    self.texttospeach(behavior[1])
-                elif behavior[0]  == 'move':
-                    self.navigate(float(behavior[1]))
+            self.launchBehavior(behavior,True)
+            #Thread(target =self.launchBehavior, args =(behavior,True)).start()
 
-                elif behavior[0]  == 'lookaway':
-                    self.lookaway()
-                elif behavior[0]  == 'wait':
-                    try:
-                        rospy.loginfo('waiting')
-                        time.sleep(int(behavior[1]))
-                    except:
-                        rospy.loginfo('incorect time must be wait
-<seconds> replace <>')
-                elif behavior[0]  == 'sayanimated':
-                    self.sayAnimated(behavior[1])
 
-                # pop out of list
-                del self.behaviors[0]
+    def changetarget(self):
+        pass
 
-    def launchBehavior(self, behaviorName):
+   
+
+    def launchBehavior(self, behaviorName, post):
         if self.managerProxy.isBehaviorInstalled(behaviorName):
             # Check that it is not already running.
             if not self.managerProxy.isBehaviorRunning(behaviorName):
                 # check if robot is awake
                 #self.checkawake()
-                # Launch behavior. This is a blocking call, use post
-if you do not
+                # Launch behavior. This is a blocking call, use postif you do not
                 # want to wait for the behavior to finish.
                 rospy.loginfo("Running Behavior" + behaviorName)
+                head_odom = self.motionProxy.getAngles(["HeadYaw","HeadPitch"], True)
 
-                head_odom = self.motionProxy.getAngles(["HeadYaw",
-"HeadPitch"], True)
-                self.managerProxy.runBehavior(behaviorName)
-                #move head back to original
-                self.motionProxy.setAngles(["HeadYaw", "HeadPitch"],
-head_odom,  0.1)
+
+                if post:
+                    ID = self.managerProxy.post.runBehavior(behaviorName)
+                    self.managerProxy.wait(ID,0)
+                    self.motionProxy.post.setAngles(["HeadYaw", "HeadPitch"],head_odom,  0.1)
+                else:
+                    self.managerProxy.runBehavior(behaviorName)
+                     #move head back to original
+                    self.motionProxy.setAngles(["HeadYaw", "HeadPitch"],head_odom,  0.1)
 
             else:
                 rospy.loginfo("Behavior is already running.")
@@ -179,30 +184,34 @@ head_odom,  0.1)
         if self.trackerEnabled:
             return
         Thread(target =self.tracker).start()
+    def stop_tracker(self):
+        self.trackerProxy.stopTracker()
+        self.trackerProxy.unregisterAllTargets()
 
     def tracker(self):
 
         self.trackerEnabled = True
 
-        self.tracker.registerTarget("People", 0.1)
-        self.tracker.track("People")
+        self.trackerProxy.registerTarget("People", 0.1)
+        self.trackerProxy.track("People")
         while  not rospy.is_shutdown() and self.trackerEnabled:
             # tell everyone we have detected a face
-            self.trackingPub.publish(not self.tracker.isTargetLost())
+            self.trackingPub.publish(not self.trackerProxy.isTargetLost())
 
 
     def startDialog(self,msg):
         # if dialog hasnt been enabled start it else open a new sessiom
-        if not dialogLoaded :
+        if not self.dialogLoaded :
             topf_path = '/home/nao/top/mytopic_enu.top'
-            topf_path = self.topf_path.decode('utf-8')
+            topf_path = topf_path.decode('utf-8')
             topic = None
-            self.dialog_p.setLanguage("English")
             topic = self.dialog_p.loadTopic(topf_path.encode('utf-8'))
             self.dialog_p.subscribe('NaoDialog')
             self.dialog_p.activateTopic(topic)
+            
         else: # if dialog is already started just open a new session
             self.dialog_p.resetAll()
+        self.dialogLoaded = True
 
     def resetDialog(self, msg):
         self.dialog_p.resetAll()
@@ -210,12 +219,13 @@ head_odom,  0.1)
 
     def start_PeopleDetectection(self):
         #enable people detection
-        self.peopleProxy.subscribe("NaoPeopleD", 500, 1)
+        self.peopleProxy.subscribe("Nao_People")
         while not rospy.is_shutdown():
             try:
+                #print 'started'
                 #get people deteced info
-                PeopleDetected =
-self.memoryProxy.getData('PeoplePerception/PeopleDetected', 0)
+                self.peopleID =[]
+                PeopleDetected = self.memoryProxy.getData('PeoplePerception/PeopleDetected', 0)
                 people = PeopleDetected[1] #this index stores people information
                 peopleIDT = [] # temp array for id and location
                 peopleLocationT =[]
@@ -223,11 +233,9 @@ self.memoryProxy.getData('PeoplePerception/PeopleDetected', 0)
                     peopleIDT.append(person[0])
                     #get faces location
 
-peopleLocationT.append(self.memoryProxy.getData('PeoplePerception/Person/'
-+ str(person[0]) + '/PositionInTorsoFrame', 0))
+                    peopleLocationT.append(self.memoryProxy.getData('PeoplePerception/Person/' + str(person[0]) + '/PositionInTorsoFrame', 0))
 
-                #if we did fine people update our array with the
-current id`s and locations
+                #if we did fine people update our array with the current id`s and locations
                 if len(peopleIDT)> 0:
                     self.peopleID = peopleIDT
                     self.peopleLocation = peopleLocationT
@@ -241,7 +249,7 @@ current id`s and locations
                 for ID,location in zip(self.peopleID,self.peopleLocation):
                     #create markers for each person
 
-markerArray.markers.append(self.location_marker(ID,location))
+                    markerArray.markers.append(self.location_marker(ID,location))
                     labelArray.markers.append(self.label_marker(ID, location))
                 #publish fa
                 markerArray.markers.extend(labelArray.markers)
@@ -249,13 +257,14 @@ markerArray.markers.append(self.location_marker(ID,location))
 
 
     def on_shutdown(self):
-         self.peopleProxy.unsubscribe("NaoPeopleD")
-         if self.dialogLoaded:
-            self.dialog_p.unsubscribe("NaoPeopleD")
-         if self.trackerEnabled:
-            self.tracker.stopTracker()
-            self.tracker.unregisterAllTargets()
+        self.peopleProxy.unsubscribe("Nao_People")
+        if self.dialogLoaded:
+            self.dialog_p.unsubscribe("NaoDialog")
+        if self.trackerEnabled:
+            self.trackerProxy.stopTracker()
+            self.trackerProxy.unregisterAllTargets()
             self.trackingPub.publish(False)
+        self.rest()
 
     def location_marker(self,ID,location):
         marker = Marker()
@@ -305,18 +314,20 @@ markerArray.markers.append(self.location_marker(ID,location))
         marker.id = ID
         return marker
     def breath(self):
-        # pBpm is a float between 5 and 30 setting the breathing
-frequency in beats per minute.
-        # pAmplitude is a float between 0 and 1 setting the amplitude
-of the breathing animation.
-        # At high frequencies, only low amplitudes are allowed. Input
-amplitude may be clipped.
+        # pBpm is a float between 5 and 30 setting the breathing frequency in beats per minute.
+        # pAmplitude is a float between 0 and 1 setting the amplitude of the breathing animation.
+        # At high frequencies, only low amplitudes are allowed. Input amplitude may be clipped.
         self.wakeup()
 
         self.motionProxy.setBreathConfig([['Bpm', 5.0], ['Amplitude', 0.3]])
         self.motionProxy.setBreathEnabled('Legs', True)
         self.motionProxy.setBreathEnabled('Arms', True)
         self.motionProxy.setBreathEnabled('Head', False)
+    def rest(self):
+        # stop breathing if its enabled
+        self.motionProxy.rest()
+        time.sleep(2)
+        self.motionProxy.stiffnessInterpolation("Body", 0, 0.5)
 
     def wakeup(self):
         #self.managerProxy.stopAllBehaviors()
@@ -336,18 +347,9 @@ amplitude may be clipped.
             time.sleep(2)
         # return to original
         if not self.stop:
-            elf.motionProxy.setAngles(["HeadYaw", "HeadPitch"],prevodom, 0.1)
+            self.motionProxy.setAngles(["HeadYaw", "HeadPitch"],prevodom, 0.1)
         self.stop = False
 
-    def sayAnimated(self, text):
-        self.checkawake()
-        # set the local configuration
-        configuration = {"bodyLanguageMode": "contextual"}
-        # say the text with the local configuration
-        self.animatedSpeechProxy.say(text, configuration)
-
-    def texttospeach(self, text):
-        self.tts.say(text)
 
 def launch_nodes(nao_ip):
     path = os.path.dirname(os.path.realpath(__file__))
@@ -375,7 +377,7 @@ if __name__ == "__main__":
     check_ros()
     rospy.init_node('NaoBehavior', anonymous=True)
     launch_nodes(args.ip)
-    app = NaoBehavior(args.ip, args.port)
+    app = Nao(args.ip, args.port)
 
     rospy.spin()
 

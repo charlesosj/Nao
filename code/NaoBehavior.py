@@ -261,7 +261,11 @@ class NaoBehavior:
         #if we have only one person look away
         if len(self.ego_location) ==1:
             print'i will look away'
-            self.lookaway()
+
+            self.tracker.unregisterAllTargets()
+            self.tracker.registerTarget("People",self.ego_id[0] )
+
+            #self.lookaway()
         else:
         # if there are multiple faces pick the first one that isnt active
             egoindex = 0
@@ -269,7 +273,11 @@ class NaoBehavior:
                 if not active:
                     # changing to different target
                     print'changing to next person'
-                    self.tracker.lookAt(self.ego_location[egoindex], 0, 0.1, False)
+                 
+                    self.tracker.unregisterAllTargets()
+                    self.tracker.registerTarget("People",self.ego_id[egoindex] )
+
+                    #self.tracker.lookAt(self.ego_location[egoindex], 0, 0.1, False)
                     #self.currentTarget = self.ego_location[egoindex]
                     break
                 egoindex += 1
@@ -312,7 +320,8 @@ class NaoBehavior:
             return
         self.track = True
 
-        self.tracker.registerTarget("People", 0.1)
+        self.tracker.unregisterAllTargets()
+        self.tracker.registerTarget("People", 1)
         self.tracker.track("People")
         # start face visualization
         t1 = threading.Thread(target=self.egoSphere)
@@ -558,12 +567,7 @@ class NaoBehavior:
             angle = [curodom[0] + distance, curodom[1]]
             self.headmove(angle, 0.07)
 
-        # wait for a bit then move back to original
-        #time.sleep(0.5)
-        print 'moving back'
-        #self.headmove(curodom, 0.04)
-        # start tracking again
-       # self.start_tracking()
+        # wait for a bit then move back to 
 
     def rest(self):
         # stop breathing if its enabled

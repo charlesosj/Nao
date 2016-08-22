@@ -41,7 +41,7 @@ class NaoSocial:
       #  self.motionProxy = ALProxy("ALMotion", '10.18.12.56', 9559)
   
         #publisher
-        self.behaviorpub = rospy.Publisher('/nao_behavior/add', String, queue_size=5)
+        self.behaviorpub = rospy.Publisher('/nao_behavior/add/blocking', String, queue_size=5)
         self.trackingPub = rospy.Publisher('/nao_behavior/enable_Tracking', String,latch=True ,queue_size=5)
         self.disabletrackingPub = rospy.Publisher('/nao_behavior/disable_Tracking', String,latch=True ,queue_size=5)
 
@@ -50,7 +50,6 @@ class NaoSocial:
         self.disableDiagpub = rospy.Publisher('/nao_behavior/disable_Diag', String,latch=True ,queue_size=5)
 
         #subscriber
-        self.voiceDetection = rospy.Subscriber("/nao_behavior/speech_detection", Bool, self.speechCallback)
         self.tracking = rospy.Subscriber("/nao_behavior/tracking", Bool, self.trackingC)
 
 
@@ -120,14 +119,11 @@ class NaoSocial:
             t1.start()
             #self.run()
 
-
-        
-
     def hello(self):
         str = 'System/animations/Stand/Gestures/Hey_1'
-        #self.behaviorpub.publish(str)
-        str = 'say Hello '
-        #self.behaviorpub.publish(str)
+        self.behaviorpub.publish(str)
+        str = 'say Hello'
+        self.behaviorpub.publish(str)
          
 
     def speechCallback(self,msg):
