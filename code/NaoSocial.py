@@ -41,21 +41,18 @@ class NaoSocial:
       #  self.motionProxy = ALProxy("ALMotion", '10.18.12.56', 9559)
   
         #publisher
-        self.behaviorpub = rospy.Publisher('/nao_behavior/add/blocking', String, queue_size=5)
-        self.trackingPub = rospy.Publisher('/nao_behavior/enable_Tracking', String,latch=True ,queue_size=5)
-        self.disabletrackingPub = rospy.Publisher('/nao_behavior/disable_Tracking', String,latch=True ,queue_size=5)
-
+        self.behaviorpub = rospy.Publisher('/nao_behavior/add/nonblocking', String, queue_size=5, latch =True)
 
         self.enableDiagpub = rospy.Publisher('/nao_behavior/enable_Diag', String,latch=True ,queue_size=5)
-        self.disableDiagpub = rospy.Publisher('/nao_behavior/disable_Diag', String,latch=True ,queue_size=5)
+        self.disableDiagpub = rospy.Publisher('/nao_behavior/reset_Diag', String,latch=True ,queue_size=5)
 
         #subscriber
         self.tracking = rospy.Subscriber("/nao_behavior/tracking", Bool, self.trackingC)
 
 
         #enable tracking
-    
-        self.trackingPub.publish("ssds")
+    	#start awarenss
+        self.behaviorpub.publish("aware")
 
     def run(self):
         print 'started'
@@ -75,31 +72,15 @@ class NaoSocial:
                 self.undetectedcount =0
                 # if we have been looking at a person for a while
                 #unregister them
-                if self.habituation >25:
+                if self.habituation >30:
 					self.behaviorpub.publish('changetarget')
 					#put habituationto 1 so we dont wave at the next person
 					self.habituation =1
             else:
                 self.undetectedcount +=1
 
-        #if we havent detected for a while look around
-            if self.detected == False  and self.searching == False and (self.undetectedcount % 15) == 0:
-            	self.habituation =0
-                self.searching == True
-                #disable dialogue
-
-                self.disableDiagpub.publish("sdsd")
-                self.behaviorpub.publish('search')
-                print "searching"
-            #if we are searching and we find someone stop searching
-            elif self.searching == True and self.detected == True:
-                self.behaviorpub.publish('stop')
-                self.searching = False
-                print 'searching stopped'
-
-
             #if we havevent detected a person in a while exit and reset
-            if self.undetectedcount >100:
+            if self.undetectedcount >500:
                 print 'reset'
 
                 self.habituation = 0
@@ -118,23 +99,11 @@ class NaoSocial:
             t1 = threading.Thread(target=self.run)
             t1.start()
             #self.run()
-
     def hello(self):
         str = 'System/animations/Stand/Gestures/Hey_1'
         self.behaviorpub.publish(str)
         str = 'say Hello'
-        self.behaviorpub.publish(str)
-         
-
-    def speechCallback(self,msg):
-        self.speechCount += 1
-    def on_shutdown(self):
-		self.disableDiagpub.publish("msg")
-		self.disabletrackingPub.publish("sdsd")
-
-
-
-
+        #self.behaviorpub.publish(str)
 
 
 rospy.init_node('NaoSocial', anonymous=True)
@@ -142,7 +111,7 @@ app = NaoSocial()
 #app.run()
 
 rospy.spin()
-rospy.on_shutdown(app.on_shutdown)
+
 
 
 
