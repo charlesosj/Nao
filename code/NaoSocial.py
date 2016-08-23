@@ -86,7 +86,7 @@ class NaoSocial:
                 self.habituation = 0
                 self.speechCount = 0
                 self.undetectedcount= 0
-                #disable dialog
+                #disable dialogs
                 self.disableDiagpub.publish("msg")
                 self.ini = False
                 return    

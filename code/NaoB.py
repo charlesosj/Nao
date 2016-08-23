@@ -50,33 +50,23 @@ class Nao:
         # publishers
         self.trackingPub = rospy.Publisher('/nao_behavior/tracking', Bool, queue_size=1)
         self.visualPub = rospy.Publisher('visual', MarkerArray, queue_size=5)
-
-
-
         rospy.Subscriber("/nao_behavior/enable_Diag", String, self.startDialog)
         rospy.Subscriber("/nao_behavior/reset_Diag", String, self.resetDialog)
         rospy.Subscriber("/nao_behavior/add/blocking", String, self.blocking_callback)
         rospy.Subscriber("/nao_behavior/add/nonblocking", String, self.nonblocking_callback)
 
         self.dialogLoaded = False
-        self.trackerEnabled = False
-        self.resting = False
-        self.stop = False
-        self.active = False
+       
+   
         Thread(target=self.start_PeopleDetectection).start()
         self.breath()
-        #  self.tracker()
-        #self.start_awareness()
-        self.awareness_paused = False
     def start_awareness(self):
-        self.awareness_paused =False
         self.basic_awareness.setTrackingMode("Head")
         self.basic_awareness.setEngagementMode("SemiEngaged")
-        self.basic_awareness.setStimulusDetectionEnabled("Sound",False)
-        self.basic_awareness.setStimulusDetectionEnabled("Movement",False)
+        self.basic_awareness.setStimulusDetectionEnabled("Sound",True)
+        self.basic_awareness.setStimulusDetectionEnabled("Movement",True)
         self.basic_awareness.setStimulusDetectionEnabled("People",True)
         self.basic_awareness.setStimulusDetectionEnabled("Touch",False )
-
 
         self.basic_awareness.startAwareness()
         time.sleep(0.5)
@@ -110,8 +100,6 @@ class Nao:
         elif behavior.startswith('move '):
             self.checkawake()
             self.motionProxy.moveTo(float(behavior[5:]), 0, 0)
-        elif behavior.startswith('search'):
-            self.search()
             return
         elif behavior.startswith('stop'):
             self.stop = True
@@ -121,8 +109,7 @@ class Nao:
         elif behavior.startswith("aware"):
             Thread(target=self.start_awareness).start()
         else:
-            Thread(target=self.launchBehavior, args=(behavior, False)).start()
-            # self.launchBehavior(behavior,False)
+            self.launchBehavior(behavior, False)
 
     def nonblocking_callback(self, data):
         behavior = data.data
@@ -145,21 +132,15 @@ class Nao:
         elif behavior.startswith('move '):
             self.checkawake()
             self.motionProxy.post.moveTo(float(behavior[5:]), 0, 0)
-
-        elif behavior.startswith('search'):
-            self.search()
-            return
-        elif behavior.startswith('stop'):
-            self.stop = True
-            return
+    
         elif behavior.startswith('changetarget'):
             Thread(target=self.change_target).start()
         elif behavior.startswith("aware"):
             Thread(target=self.start_awareness).start()
         else:
+            Thread(target=self.launchBehavior, args=(behavior, False)).start()
             self.launchBehavior(behavior, True)
             # Thread(target =self.launchBehavior, args =(behavior,True)).start()
-
     def change_target(self):
         #if we have more than one person change to the other
         if  len(self.peopleID) >1:
@@ -167,7 +148,6 @@ class Nao:
                 if person != self.trackerTarget:
                     self.basic_awareness.engagePerson(person)
                     return
-
         else:
             self.lookaway()
     def lookaway(self):
@@ -235,7 +215,6 @@ class Nao:
             time.sleep(0.5)
             Thread(target=self.start_awareness).start()
 
-
     def getBehaviors(self):
         names = self.managerProxy.getInstalledBehaviors()
         for x in names:
@@ -253,7 +232,6 @@ class Nao:
         else:  # if dialog is already started just open a new session
             self.dialog_p.resetAll()
         self.dialogLoaded = True
-
     def resetDialog(self, msg):
         self.dialog_p.resetAll()
 
@@ -299,7 +277,6 @@ class Nao:
         self.peopleProxy.unsubscribe("Nao_People")
         if self.dialogLoaded:
             self.dialog_p.unsubscribe("NaoDialog")
-
         if self.basic_awareness.isAwarenessRunning:
             self.basic_awareness.stopAwareness()
         self.rest()
@@ -361,7 +338,7 @@ class Nao:
         self.motionProxy.setBreathConfig([['Bpm', 5.0], ['Amplitude', 0.3]])
         self.motionProxy.setBreathEnabled('Legs', True)
         self.motionProxy.setBreathEnabled('Arms', True)
-        self.motionProxy.setBreathEnabled('Head', False)
+        self.motionProxy.setBreathEnabled('Head', True)
 
     def rest(self):
         #rest and disable stiffness
@@ -371,43 +348,7 @@ class Nao:
     def wakeup(self):
         if not self.motionProxy.robotIsWakeUp():
             self.postureProxy.goToPosture("StandInit", 0.4)
-            self.resting = False
-    def search(self):
-        if self.basic_awareness.isAwarenessRunning():
-            self.basic_awareness.stopAwareness()
-            self.awareness_paused = True
-        # get current head location
-        prevodom = self.motionProxy.getAngles(["HeadYaw", "HeadPitch"], False)
-        # move to the left
-        self.motionProxy.setAngles("HeadYaw", -0.8, 0.1)
-         #check for a person
-        if self.awareness_paused == True:
-            Thread(target=self.start_awareness).start()
 
-        time.sleep(2)
-        if self.basic_awareness.isAwarenessRunning() and not self.stop:
-            self.basic_awareness.stopAwareness()
-            self.awareness_paused = True
-
-        # if face hasnt been found move to the right
-        if not self.stop:
-            self.motionProxy.setAngles("HeadYaw", 0.8, 0.1)
-                     #check for a person
-            if self.awareness_paused  and not self.basic_awareness.isAwarenessRunning:
-                Thread(target=self.start_awareness).start()
-
-                time.sleep(2)
-        # return to original
-        if not self.stop:
-            if self.basic_awareness.isAwarenessRunning():
-                self.basic_awareness.stopAwareness()
-                self.awareness_paused = True
-
-            self.motionProxy.setAngles(["HeadYaw", "HeadPitch"], prevodom, 0.1)
-        self.stop = False
-
-        if self.awareness_paused  and not self.basic_awareness.isAwarenessRunning:
-            Thread(target=self.start_awareness).start()
 
 def launch_nodes(nao_ip):
     path = os.path.dirname(os.path.realpath(__file__))
