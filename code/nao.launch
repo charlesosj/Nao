@@ -38,10 +38,6 @@
 
 
 
-
-
-
-
  <!-- camera-->
 <node pkg="naoqi_sensors_py" type="camera.py" name="camera" required="true" args="--pip=$(arg nao_ip) --pport=$(arg nao_port)" output="screen">
      <param name="calibration_file_bottom" type="string" value="file://$(find naoqi_sensors_py)/share/nao_camera_bottom_160x120.yaml"/>

@@ -63,10 +63,11 @@ class Nao:
     def start_awareness(self):
         self.basic_awareness.setTrackingMode("Head")
         self.basic_awareness.setEngagementMode("SemiEngaged")
-        self.basic_awareness.setStimulusDetectionEnabled("Sound",True)
-        self.basic_awareness.setStimulusDetectionEnabled("Movement",True)
+        self.basic_awareness.setStimulusDetectionEnabled("Sound",False)
+        self.basic_awareness.setStimulusDetectionEnabled("Movement",False)
         self.basic_awareness.setStimulusDetectionEnabled("People",True)
         self.basic_awareness.setStimulusDetectionEnabled("Touch",False )
+        self.basic_awareness.setParameter("MaxHumanSearchTime",float(1))
 
         self.basic_awareness.startAwareness()
         time.sleep(0.5)
@@ -143,7 +144,9 @@ class Nao:
             # Thread(target =self.launchBehavior, args =(behavior,True)).start()
     def change_target(self):
         #if we have more than one person change to the other
+        print  len(self.peopleID)
         if  len(self.peopleID) >1:
+
             for person in self.peopleID:
                 if person != self.trackerTarget:
                     self.basic_awareness.engagePerson(person)
@@ -242,16 +245,17 @@ class Nao:
             try:
                 # print 'started'
                 # get people deteced info
-                self.peopleID = []
-                PeopleDetected = self.memoryProxy.getData('PeoplePerception/PeopleDetected', 0)
-                people = PeopleDetected[1]  # this index stores people information
+                #self.peopleID = []
+                PeopleDetected = self.memoryProxy.getData('PeoplePerception/PeopleList', 0)
+                #print PeopleDetected
+                people = PeopleDetected  # this index stores people information
                 peopleIDT = []  # temp array for id and location
                 peopleLocationT = []
                 for person in people:
-                    peopleIDT.append(person[0])
+                    peopleIDT.append(person)
                     # get faces location
                     peopleLocationT.append(
-                        self.memoryProxy.getData('PeoplePerception/Person/' + str(person[0]) + '/PositionInTorsoFrame',
+                        self.memoryProxy.getData('PeoplePerception/Person/' + str(person) + '/PositionInTorsoFrame',
                                                  0))
 
                 # if we did fine people update our array with the current id`s and locations
@@ -259,7 +263,7 @@ class Nao:
                     self.peopleID = peopleIDT
                     self.peopleLocation = peopleLocationT
             except Exception, e:
-                pass
+                print e
             # if we have detected faces draw them
             if len(self.peopleID) > 0:
                 markerArray = MarkerArray()

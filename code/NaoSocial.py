@@ -72,7 +72,7 @@ class NaoSocial:
                 self.undetectedcount =0
                 # if we have been looking at a person for a while
                 #unregister them
-                if self.habituation >30:
+                if self.habituation >20:
 					self.behaviorpub.publish('changetarget')
 					#put habituationto 1 so we dont wave at the next person
 					self.habituation =1
