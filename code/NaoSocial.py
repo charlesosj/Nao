@@ -53,9 +53,9 @@ class NaoSocial:
         #enable tracking
     	#start awarenss
         self.behaviorpub.publish("aware")
+        self.look_away_timer = 30
 
     def run(self):
-        print 'started'
         while True and not rospy.is_shutdown():
            
             print self.habituation ,self.undetectedcount
@@ -72,10 +72,11 @@ class NaoSocial:
                 self.undetectedcount =0
                 # if we have been looking at a person for a while
                 #unregister them
-                if self.habituation >20:
-					self.behaviorpub.publish('changetarget')
+                if self.habituation % self.look_away_timer == 0:
+                    print 'Changing Target'
+                    self.behaviorpub.publish('changetarget')
 					#put habituationto 1 so we dont wave at the next person
-					self.habituation =1
+                    self.habituation =1
             else:
                 self.undetectedcount +=1
 
@@ -101,7 +102,7 @@ class NaoSocial:
             #self.run()
     def hello(self):
         str = 'System/animations/Stand/Gestures/Hey_1'
-        self.behaviorpub.publish(str)
+        #self.behaviorpub.publish(str)
         str = 'say Hello'
         #self.behaviorpub.publish(str)
 

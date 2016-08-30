@@ -34,7 +34,6 @@ class Nao:
         self.animatedSpeechProxy = ALProxy("ALAnimatedSpeech", robotIP, port)
         self.navigationProxy = ALProxy("ALNavigation", robotIP, port)
         self.postureProxy = ALProxy("ALRobotPosture", robotIP, port)
-        self.asr = ALProxy("ALSpeechRecognition", robotIP, port)
         self.trackerProxy = ALProxy("ALTracker", robotIP, port)
         self.peopleProxy = ALProxy("ALPeoplePerception", robotIP, port)
         self.autonomousMovesProxy = ALProxy("ALAutonomousMoves", robotIP, port)
@@ -43,12 +42,15 @@ class Nao:
         self.tts = ALProxy("ALTextToSpeech", robotIP, port)
         self.tts.setParameter("speed", 90)
         self.basic_awareness = ALProxy("ALBasicAwareness", robotIP, port)
-        self.peopleID = []
         self.peopleLocation = []
         self.trackerTarget = -1
         self.People_list = []
         self.People_undetected = []
         self.People_detected = []
+        self.visible_detection = 5
+        self.People_angles = []
+        self.undetected_person_count = 50
+        self.same_person_threshold = 0.2
 
         # publishers
         self.trackingPub = rospy.Publisher('/nao_behavior/tracking', Bool, queue_size=1)
@@ -59,32 +61,27 @@ class Nao:
         rospy.Subscriber("/nao_behavior/add/nonblocking", String, self.nonblocking_callback)
 
         self.dialogLoaded = False
-       
-   
+
         Thread(target=self.start_PeopleDetectection).start()
         self.breath()
+
     def start_awareness(self):
         self.basic_awareness.setTrackingMode("Head")
-        self.basic_awareness.setEngagementMode("SemiEngaged")
-        self.basic_awareness.setStimulusDetectionEnabled("Sound",False)
-        self.basic_awareness.setStimulusDetectionEnabled("Movement",False)
-        self.basic_awareness.setStimulusDetectionEnabled("People",True)
-        self.basic_awareness.setStimulusDetectionEnabled("Touch",False )
-        self.basic_awareness.setParameter("MaxHumanSearchTime",float(1))
-
-
-
+        self.basic_awareness.setEngagementMode("FullyEngaged")
+        self.basic_awareness.setStimulusDetectionEnabled("Sound", True)
+        self.basic_awareness.setStimulusDetectionEnabled("Movement", True)
+        self.basic_awareness.setStimulusDetectionEnabled("People", True)
+        self.basic_awareness.setStimulusDetectionEnabled("Touch", False)
+        self.basic_awareness.setParameter("MaxHumanSearchTime", float(2))
         self.basic_awareness.startAwareness()
         time.sleep(0.5)
-        while not rospy.is_shutdown() and self.basic_awareness.isAwarenessRunning():
-            #get current target being tracked
-            
+        while not rospy.is_shutdown():
+            # get current target being tracked
             try:
                 self.trackerTarget = self.memoryProxy.getData('ALBasicAwareness/HumanTracked', 0)
                 self.trackingPub.publish(not self.trackerProxy.isTargetLost())
-
-            except Exception,e :
-                print e 
+            except Exception, e:
+                print e
 
     def blocking_callback(self, data):
         behavior = data.data
@@ -98,17 +95,13 @@ class Nao:
             print 'saying' + behavior[4:]
             self.tts.say(behavior[4:])
         elif behavior.startswith('sayanimated'):
-            self.checkawake()
             # set the local configuration
             configuration = {"bodyLanguageMode": "contextual"}
             # say the text with the local configuration
             self.animatedSpeechProxy.say(behavior[11:], configuration)
         elif behavior.startswith('move '):
-            self.checkawake()
+
             self.motionProxy.moveTo(float(behavior[5:]), 0, 0)
-            return
-        elif behavior.startswith('stop'):
-            self.stop = True
             return
         elif behavior.startswith('changetarget'):
             Thread(target=self.change_target).start()
@@ -129,55 +122,46 @@ class Nao:
             print 'saying' + behavior[4:]
             self.tts.post.say(behavior[4:])
         elif behavior.startswith('sayanimated'):
-            self.checkawake()
             # set the local configuration
             configuration = {"bodyLanguageMode": "contextual"}
             # say the text with the local configuration
             self.animatedSpeechProxy.post.say(behavior[11:], configuration)
-
         elif behavior.startswith('move '):
-            self.checkawake()
             self.motionProxy.post.moveTo(float(behavior[5:]), 0, 0)
-    
         elif behavior.startswith('changetarget'):
             Thread(target=self.change_target).start()
         elif behavior.startswith("aware"):
             Thread(target=self.start_awareness).start()
         else:
-            Thread(target=self.launchBehavior, args=(behavior, False)).start()
-            self.launchBehavior(behavior, True)
-            # Thread(target =self.launchBehavior, args =(behavior,True)).start()
+            Thread(target=self.launchBehavior, args=(behavior, True)).start()
+
     def change_target(self):
-        #if we have more than one person change to the other
+        # if we have more than one person change to the other
+        furtherst_location = []
+        furtherst_y = 0
 
-        
-        furtherst_location = 0
-
-        if  len(self.People_list) >1:
-            self.basic_awareness.stopAwareness()
-
-            for location in self.People_list:
-
-                if  abs(location[1] - 0) > furtherst_location[0]:
+        if len(self.People_list) > 1:
+            for location, detection, angles in zip(self.People_list, self.People_detected, self.People_angles):
+                if abs(location[1] - 0) > furtherst_y and detection[0] > self.visible_detection:
                     furtherst_location = location
+                    furtherst_y = location[1]
+            # if we have found somewhere to move to
+            if len(furtherst_location) > 0:
+                self.basic_awareness.stopAwareness()
+                time.sleep(0.5)
 
-            self.motionProxy.setPositions('Head',0,furtherst_location,0.1,)
+                self.trackerProxy.lookAt(furtherst_location, 0.07, False)
+                time.sleep(1)
+                print 'restarting'
+                self.basic_awareness.startAwareness()
 
-            self.basic_awareness.start_awareness()
-
-
-
-
-
-
-
-
-           
-        else:
+       #if we didnt find a good enough other face look away
+        if furtherst_y == 0:
             self.lookaway()
+
     def lookaway(self):
-        #stop awareness if its running
-        awareness_paused =False
+        # stop awareness if its running
+        awareness_paused = False
         if self.basic_awareness.isAwarenessRunning():
             self.basic_awareness.stopAwareness()
             awareness_paused = True
@@ -196,27 +180,26 @@ class Nao:
         elif direction == 'right':
             angle = [curodom[0] + distance, curodom[1]]
             self.motionProxy.setAngles(["HeadYaw", "HeadPitch"], angle, 0.07)
-       #wait a second then move back
+            # wait a second then move back
         time.sleep(1)
         self.motionProxy.setAngles(["HeadYaw", "HeadPitch"], curodom, 0.07)
-        time.sleep(0.5)
+        time.sleep(1)
 
-        #if awareness was paused we need to turn it back on
+        # if awareness was paused we need to turn it back on
         if awareness_paused:
             Thread(target=self.start_awareness).start()
-
 
     def launchBehavior(self, behaviorName, post):
         awareness_paused = False
         if self.managerProxy.isBehaviorInstalled(behaviorName):
             # Check that it is not already running.
             if not self.managerProxy.isBehaviorRunning(behaviorName):
-          
+
                 # Launch behavior. This is a blocking call, use postif you do not
                 # want to wait for the behavior to finish.
                 awareness_paused = False
                 if self.basic_awareness.isAwarenessRunning:
-                    self.basic_awareness.stopAwareness
+                    self.basic_awareness.stopAwareness()
                     awareness_paused = True
 
                 rospy.loginfo("Running Behavior" + behaviorName)
@@ -257,102 +240,95 @@ class Nao:
         else:  # if dialog is already started just open a new session
             self.dialog_p.resetAll()
         self.dialogLoaded = True
+
     def resetDialog(self, msg):
         self.dialog_p.resetAll()
 
     def start_PeopleDetectection(self):
         # enable people detection, this visualizes into rviz
         self.peopleProxy.subscribe("Nao_People")
-        self.peopleProxy.setTimeBeforePersonDisappears(15)
-        self.peopleProxy.setTimeBeforeVisiblePersonDisappears(5)
-
+        self.peopleProxy.setTimeBeforePersonDisappears(5)
+        self.peopleProxy.setTimeBeforeVisiblePersonDisappears(1)
         while not rospy.is_shutdown():
             time.sleep(0.5)
-            visible_detection = 5 
-            undetected_count = 30
             try:
                 #
                 PeopleDetected = self.memoryProxy.getData('PeoplePerception/VisiblePeopleList', 0)
-
-                #check each persons location
+                # check each persons location
                 for person in PeopleDetected:
                     ID = person
-                    #get location
-                    location =  self.memoryProxy.getData('PeoplePerception/Person/' + str(ID) + '/PositionInTorsoFrame', 0)
+                    # get location
+                    location = self.memoryProxy.getData('PeoplePerception/Person/' + str(ID) + '/PositionInTorsoFrame',
+                                                        0)
                     match_found = False
+                    angles = self.memoryProxy.getData('PeoplePerception/Person/' + str(ID) + '/AnglesYawPitch', 0)
 
-
-                    if len(self.People_list) >0 :
-                     # if person is around the same location
+                    if len(self.People_list) > 0:
+                        # if person is around the same location
                         index = 0
                         closest_id = 999
                         closest_distance = 9999
                         # check to see if the location is closest to any of my people if so 
-                        #increment detected count
+                        # increment detected count
                         for myperson in self.People_list:
-                            #increment undetected count
-                           # print location
-                            #print location[0]
+                            # increment undetected count
                             distance = abs(myperson[1] - location[1])
-                            print str(distance )+ ' distance'
-                            if distance < 0.1 and distance < closest_distance:
-
+                            # print str(distance )+ ' distance'
+                            if distance < self.same_person_threshold and distance < closest_distance:
                                 closest_distance = distance
                                 closest_id = index
                                 match_found = True
-                            index +=1
-                            
-                            #if we have found a match update locatio
-                            #print match_found
+                            index += 1
+
+                            # if we have found a match update locatio
+                            # print match_found
                     if match_found:
 
                         self.People_list[closest_id] = location
                         self.People_detected[closest_id][0] += 1
                         self.People_detected[closest_id][1] = 0
-                        #print self.People_detected[closest_id][0]
+                        self.People_detected[closest_id][2] = int(ID)
+                        self.People_angles.append(angles)
 
                     else:
                         self.People_list.append(location)
-                        self.People_detected.append([0,0])
-
-                    
+                        self.People_detected.append([0, 0, int(ID)])
+                        self.People_angles.append(angles)
             except Exception, e:
                 print e
 
-            print str(len(self.People_list)) + 'size'
-            
-            if len(self.People_list) >0:
+            if len(self.People_list) > 0:
                 temp_people = []
                 temp_detection = []
-                index = 0
+                temp_angles = []
+
                 markerArray = MarkerArray()
 
-                for detected, location in zip(self.People_detected, self.People_list):
-                    #if it has been detect for more than x seconds print
+                for detected, location, angles in zip(self.People_detected, self.People_list, self.People_angles):
+                    # if it has been detect for more than x seconds print
 
-                    print str( detected[1]) +' undetected count'
-                    if detected[0] >visible_detection:
-                        markerArray.markers.append(self.location_marker(location))
-                        
-
-                    if detected[1] >undetected_count:
+                    #  print str( detected[1]) +' undetected count'
+                    if detected[0] > self.visible_detection:
+                        markerArray.markers.append(self.location_marker(detected[2], location))
+                    # undetected for too long
+                    if detected[1] > self.undetected_person_count:
                         pass
-                    #if they werent detected long eough remove them
-                    elif detected[1] > 5 and detected[0] <= visible_detection:
+                    # if they werent detected long eough remove them
+                    elif detected[1] > 5 and detected[0] <= self.visible_detection:
                         pass
                     else:
                         temp_people.append(location)
-                        detected[1] +=1
+                        detected[1] += 1
                         temp_detection.append(detected)
-
+                        temp_angles.append(angles)
                 self.People_detected = temp_detection
                 self.People_list = temp_people
+                self.People_angles = temp_angles
 
-
-
-                    # create markers for each person
+                # create markers for each person
                 # publish fa
                 self.visualPub.publish(markerArray)
+
     def on_shutdown(self):
         self.peopleProxy.unsubscribe("Nao_People")
         if self.dialogLoaded:
@@ -361,7 +337,7 @@ class Nao:
             self.basic_awareness.stopAwareness()
         self.rest()
 
-    def location_marker(self, location):
+    def location_marker(self, ID, location):
         marker = Marker()
         marker.header.frame_id = "torso"
         marker.ns = "headl"
@@ -372,7 +348,7 @@ class Nao:
         marker.scale.z = 0.1
         marker.color.a = 1.0
 
-        if 22 == self.trackerTarget:
+        if ID == self.trackerTarget:
             marker.color.r = 1.0
             marker.color.g = 0.0
             marker.color.b = 0.0
@@ -385,28 +361,7 @@ class Nao:
         marker.pose.position.y = location[1]
         marker.pose.position.z = location[2]
         marker.lifetime.secs = 1
-        marker.id = int(location[0])
-        return marker
-
-    
-    def label_marker(self,ID,location):
-        marker = Marker()
-        marker.header.frame_id = "torso"
-        marker.type = marker.TEXT_VIEW_FACING
-        marker.action = marker.ADD
-        marker.ns = "label"
-        marker.scale.z = 0.05
-        marker.color.a = 1.0
-        marker.color.r = 0.1
-        marker.color.g = 1.0
-        marker.color.b = 0.0
-        marker.pose.orientation.w = 1.0
-        marker.pose.position.x = location[0]
-        marker.pose.position.y = location[1]
-        marker.pose.position.z = location[2] + 0.1
-        marker.lifetime.secs = 1
-        marker.text = str(ID)
-        marker.id = ID
+        marker.id = int(ID)
         return marker
 
     def breath(self):
@@ -420,10 +375,11 @@ class Nao:
         self.motionProxy.setBreathEnabled('Head', False)
 
     def rest(self):
-        #rest and disable stiffness
+        # rest and disable stiffness
         self.motionProxy.rest()
         time.sleep(2)
         self.motionProxy.stiffnessInterpolation("Body", 0, 0.5)
+
     def wakeup(self):
         if not self.motionProxy.robotIsWakeUp():
             self.postureProxy.goToPosture("StandInit", 0.4)
@@ -434,13 +390,16 @@ def launch_nodes(nao_ip):
     path = path + '/nao.launch nao_ip:=' + nao_ip
     subprocess.Popen('roslaunch ' + path, shell=True)
 
+
 def check_ros():
     # check if ros is running, if not start it
     try:
         m = xmlrpclib.ServerProxy(os.environ['ROS_MASTER_URI'])
+        # noinspection PyUnusedLocal,PyUnusedLocal
         code, msg, val = m.getSystemState('/script')
     except:
         subprocess.Popen('roscore')
+
 
 if __name__ == "__main__":
     # get reobot ip and port number
@@ -456,8 +415,6 @@ if __name__ == "__main__":
     rospy.init_node('NaoBehavior', anonymous=True)
     launch_nodes(args.ip)
     app = Nao(args.ip, args.port)
-
     rospy.spin()
-
     # what to do on shutdown
     rospy.on_shutdown(app.on_shutdown)
