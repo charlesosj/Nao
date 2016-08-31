@@ -1,0 +1,42 @@
+[submodule "src/pal_gazebo_plugins"]
+	path = src/pal_gazebo_plugins
+	url = git@github.com:pal-robotics/pal_gazebo_plugins.git
+[submodule "src/ros_controllers"]
+	path = src/ros_controllers
+	url = ../../ros-controls/ros_controllers.git
+[submodule "src/roboticsgroup_gazebo_plugins"]
+	path = src/roboticsgroup_gazebo_plugins
+	url = git@github.com:roboticsgroup/roboticsgroup_gazebo_plugins.git
+[submodule "src/naoqi_interaction"]
+	path = src/naoqi_interaction
+	url = ../../ros-naoqi/naoqi_interaction.git
+[submodule "src/control_msgs"]
+	path = src/control_msgs
+	url = ../../ros-controls/control_msgs.git
+[submodule "src/control_toolbox"]
+	path = src/control_toolbox
+	url = ../../ros-controls/control_toolbox.git
+[submodule "src/nao_dcm"]
+	path = src/nao_dcm
+	url = ../../costashatz/nao_dcm
+[submodule "src/nao_extras"]
+	path = src/nao_extras
+	url = ../../ros-naoqi/nao_extras.git
+[submodule "src/pal_msgs"]
+	path = src/pal_msgs
+	url = git@github.com:pal-robotics/pal_msgs.git
+[submodule "src/nao_robot"]
+	path = src/nao_robot
+	url = ../../ros-naoqi/nao_robot.git
+[submodule "src/ros_control"]
+	path = src/ros_control
+	url = ../../ros-controls/ros_control.git
+[submodule "src/naoqi_bridge"]
+	path = src/naoqi_bridge
+	url = ../../ros-naoqi/naoqi_bridge.git
+[submodule "src/nao_rail"]
+	path = src/nao_rail
+	url = git://github.com/benersuay/nao_rail.git
+[submodule "src/nao_virtual"]
+	path = src/nao_virtual
+	url = ../../ros-naoqi/nao_virtual
